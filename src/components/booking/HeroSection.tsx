@@ -31,20 +31,9 @@ export function HeroSection({
         <div className="flex flex-wrap justify-center gap-8 mb-10 animate-fade-in" style={{
         animationDelay: "0.2s"
       }}>
-
-          <a href={`tel:${BARBERSHOP_CONFIG.phone}`} className="cursor-pointer hover:opacity-80 transition-opacity">
-            <InfoItem icon={<Phone className="w-6 h-6" />} text={BARBERSHOP_CONFIG.phone} />
-
+          <InfoItem icon={<Phone className="w-6 h-6" />} text={BARBERSHOP_CONFIG.phone} />
           <InfoItem icon={<Clock className="w-6 h-6" />} text={`${BARBERSHOP_CONFIG.hours} א'-ו'`} />
-
-          <a 
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BARBERSHOP_CONFIG.address)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <InfoItem icon={<MapPin className="w-6 h-6" />} text={BARBERSHOP_CONFIG.location} />
-          </a>
+          <InfoItem icon={<MapPin className="w-6 h-6" />} text={BARBERSHOP_CONFIG.location} />
         </div>
 
         {/* Book Button */}
