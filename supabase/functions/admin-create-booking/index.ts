@@ -15,7 +15,6 @@ interface AdminCreateBookingRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -25,7 +24,6 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify admin token
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -44,7 +42,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if user is admin
     const { data: isAdmin } = await supabase.rpc('has_role', {
       _user_id: user.id,
       _role: 'admin'
@@ -59,14 +56,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { customer_name, customer_phone, booking_date, booking_time }: AdminCreateBookingRequest = await req.json();
 
-    console.log(`Admin creating booking: ${booking_date} ${booking_time} for ${customer_name}`);
-
-    // Validate inputs
     if (!customer_name || !customer_phone || !booking_date || !booking_time) {
       throw new Error("Missing required fields");
     }
 
-    // Create the booking
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert([{
@@ -84,8 +77,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to create booking");
     }
 
-    console.log("Admin booking created:", booking.id);
-
     // Send confirmation SMS
     try {
       const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -97,11 +88,10 @@ const handler = async (req: Request): Promise<Response> => {
           ? `+972${customer_phone.slice(1)}` 
           : customer_phone;
 
-        const message = `✂️ התור שלך אושר!\n📅 תאריך: ${booking_date}\n⏰ שעה: ${booking_time}\n\nBARBERSHOP by Mohammad Eyad`;
+        // UPDATED MESSAGE HERE
+        const message = `✂️ התור שלך אושר!\n📅 תאריך: ${booking_date}\n⏰ שעה: ${booking_time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\n\nBARBERSHOP by Mohammad Eyad`;
 
-        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-
-        await fetch(twilioUrl, {
+        await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`, {
           method: "POST",
           headers: {
             "Authorization": `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
@@ -113,8 +103,6 @@ const handler = async (req: Request): Promise<Response> => {
             Body: message,
           }),
         });
-
-        console.log("Confirmation SMS sent");
       }
     } catch (smsError) {
       console.error("Failed to send confirmation SMS:", smsError);
@@ -122,19 +110,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(
       JSON.stringify({ success: true, booking }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
-    console.error("Error in admin-create-booking function:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };
