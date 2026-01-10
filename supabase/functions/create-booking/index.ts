@@ -106,9 +106,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation SMS
     try {
-      const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-      const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-      const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+    //  const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    //  const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    //  const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
 
       if (twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
         const formattedPhone = phone.startsWith("0") ? `+972${phone.slice(1)}` : phone;
