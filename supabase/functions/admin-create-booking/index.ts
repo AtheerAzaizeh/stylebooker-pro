@@ -77,7 +77,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to create booking");
     }
 
-    // Send confirmation SMS
     try {
       const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
       const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -88,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
           ? `+972${customer_phone.slice(1)}` 
           : customer_phone;
 
-        // UPDATED MESSAGE HERE
+        // UPDATED MESSAGE with cancellation instruction
         const message = `✂️ התור שלך אושר!\n📅 תאריך: ${booking_date}\n⏰ שעה: ${booking_time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\n\nBARBERSHOP by Mohammad Eyad`;
 
         await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`, {
