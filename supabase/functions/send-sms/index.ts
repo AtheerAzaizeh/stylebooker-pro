@@ -71,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
         
       case "booking_confirmation":
         const formattedDateConfirm = data?.date ? formatDateHebrew(data.date) : data?.date;
-        message = `התור שלך אושר!\nתאריך: ${formattedDateConfirm}\nשעה: ${data?.time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\n\nBARBERSHOP by Mohammad Eyad`;
+        message = `✂️ התור שלך אושר!\n📅 תאריך: ${formattedDateCancel}\n⏰ שעה: ${data?.time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\n\nBARBERSHOP by Mohammad Eyad`;
         break;
         
       case "booking_cancelled":
