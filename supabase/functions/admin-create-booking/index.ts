@@ -87,10 +87,11 @@ const handler = async (req: Request): Promise<Response> => {
           ? `+972${customer_phone.slice(1)}` 
           : customer_phone;
 
-        // UPDATED MESSAGE with cancellation instruction
-        const message = `✂️ התור שלך אושר!\n📅 תאריך: ${booking_date}\n⏰ שעה: ${booking_time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\n\nBARBERSHOP by Mohammad Eyad`;
+        const message = `✂️ התור שלך אושר!\n📅 תאריך: ${booking_date}\n⏰ שעה: ${booking_time}\n\nBARBERSHOP by Mohammad Eyad`;
 
-        await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`, {
+        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
+
+        await fetch(twilioUrl, {
           method: "POST",
           headers: {
             "Authorization": `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
