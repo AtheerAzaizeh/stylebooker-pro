@@ -36,8 +36,9 @@ export function HeroSection({
             <InfoItem icon={<Phone className="w-6 h-6" />} text={BARBERSHOP_CONFIG.phone} />
 
           <InfoItem icon={<Clock className="w-6 h-6" />} text={`${BARBERSHOP_CONFIG.hours} א'-ו'`} />
-                   <a 
-            href={`https://www.google.com/maps/search/%D7%90%D7%9C%D7%A1%D7%A2%D7%93%D7%99%D7%94+48,+Daburiyya%E2%80%AD/@32.6916778,35.3672537,17z/data=!3m1!4b1?entry=ttu&g_ep=EgoyMDI2MDEwNy4wIKXMDSoASAFQAw%3D%3D`}
+
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BARBERSHOP_CONFIG.address)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="cursor-pointer hover:opacity-80 transition-opacity"
