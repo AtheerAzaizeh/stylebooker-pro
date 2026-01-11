@@ -18,6 +18,10 @@ interface SendSmsRequest {
   };
 }
 
+// Test account for Google Play Store review
+const TEST_PHONE = "0501234567";
+const TEST_CODE = "123456";
+
 const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
 function formatDateHebrew(dateStr: string): string {
@@ -58,7 +62,9 @@ const handler = async (req: Request): Promise<Response> => {
     let message = "";
     switch (type) {
       case "verification":
-        const code = data?.code || Math.floor(100000 + Math.random() * 900000).toString();
+        // Use fixed code for test account (Google Play Store review)
+        const isTestAccount = phone === TEST_PHONE;
+        const code = isTestAccount ? TEST_CODE : (data?.code || Math.floor(100000 + Math.random() * 900000).toString());
         message = `קוד האימות שלך הוא: ${code}\nBARBERSHOP by Mohammad Eyad`;
         
         // Store verification code in database
@@ -72,14 +78,31 @@ const handler = async (req: Request): Promise<Response> => {
           .delete()
           .eq("phone", phone);
         
-        // Insert new code with 5-minute expiry
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+        // Insert new code with extended expiry for test account (30 days), or 5-minute expiry for normal users
+        const expiryTime = isTestAccount ? 30 * 24 * 60 * 60 * 1000 : 5 * 60 * 1000;
+        const expiresAt = new Date(Date.now() + expiryTime).toISOString();
         await supabase.from("verification_codes").insert({
           phone,
           code,
           expires_at: expiresAt,
           verified: false,
         });
+        
+        // Skip SMS for test account
+        if (isTestAccount) {
+          console.log("Test account detected - skipping actual SMS");
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              type,
+              testAccount: true
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json", ...corsHeaders },
+            }
+          );
+        }
         
         break;
         
