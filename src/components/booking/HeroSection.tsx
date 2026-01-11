@@ -1,6 +1,6 @@
 import { Phone, Clock, MapPin } from "lucide-react";
 import { BARBERSHOP_CONFIG } from "@/lib/constants";
-import heroImage from "@/assets/hero-barbershop.webp";
+import heroImage from "@/assets/hero-barbershop-optimized.webp";
 interface HeroSectionProps {
   onBookClick: () => void;
   compact?: boolean;
@@ -12,7 +12,14 @@ export function HeroSection({
   return <section className={`relative ${compact ? "h-[40vh]" : "h-screen"} min-h-[400px] overflow-hidden`}>
       {/* Background Image */}
       <div className="absolute inset-0">
-        <img src={heroImage} alt="Barbershop" className="w-full h-full object-cover" />
+        <img 
+          src={heroImage} 
+          alt="Barbershop" 
+          className="w-full h-full object-cover"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+        />
         <div className="hero-overlay" />
       </div>
 
