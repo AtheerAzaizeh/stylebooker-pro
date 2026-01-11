@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { z } from "zod";
-import heroImage from "@/assets/hero-barbershop.jpg";
+import heroImage from "@/assets/hero-barbershop.webp";
 import { adminLoginSchema } from "@/lib/validations";
 
 interface AdminLoginProps {
