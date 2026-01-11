@@ -17,6 +17,57 @@ function formatDateHebrew(dateStr: string): string {
   return `יום ${dayName} ${day}/${month}`;
 }
 
+/**
+ * Validates and normalizes an Israeli phone number.
+ * Returns the local format (e.g., 0541234567) or null if invalid.
+ */
+function validateIsraeliPhone(phone: string): string | null {
+  if (!phone || typeof phone !== 'string') {
+    return null;
+  }
+  
+  // Trim and limit length to prevent memory issues
+  phone = phone.trim().slice(0, 20);
+  
+  // Remove common non-digit characters (spaces, dashes, parentheses)
+  const cleaned = phone.replace(/[\s\-()]/g, '');
+  
+  // Validate formats:
+  // +972XXXXXXXXX (international with +)
+  // 972XXXXXXXXX (international without +)
+  // 05XXXXXXXX (local mobile)
+  
+  let localPhone = '';
+  
+  if (/^\+972[1-9]\d{8}$/.test(cleaned)) {
+    // International format with +: +972541234567
+    localPhone = '0' + cleaned.slice(4);
+  } else if (/^972[1-9]\d{8}$/.test(cleaned)) {
+    // International format without +: 972541234567
+    localPhone = '0' + cleaned.slice(3);
+  } else if (/^0[1-9]\d{8}$/.test(cleaned)) {
+    // Local format: 0541234567
+    localPhone = cleaned;
+  } else {
+    return null; // Invalid format
+  }
+  
+  return localPhone;
+}
+
+/**
+ * Validates message body for cancellation requests.
+ * Returns sanitized message or null if invalid.
+ */
+function validateMessageBody(body: string): string | null {
+  if (!body || typeof body !== 'string') {
+    return null;
+  }
+  
+  // Trim and limit length
+  return body.trim().slice(0, 500);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -30,10 +81,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Parse incoming SMS data from capcom6 SMS Gateway
     // Webhook format: https://docs.sms-gate.app/integration/webhooks/
-    let from = "";
-    let body = "";
-
     const contentType = req.headers.get("content-type") || "";
+    
+    let rawPhone = "";
+    let rawBody = "";
     
     if (contentType.includes("application/json")) {
       const jsonData = await req.json();
@@ -42,45 +93,49 @@ const handler = async (req: Request): Promise<Response> => {
       // capcom6 webhook format for sms:received event
       // { "event": "sms:received", "payload": { "message": "...", "phoneNumber": "..." } }
       if (jsonData.event === "sms:received" && jsonData.payload) {
-        from = jsonData.payload.phoneNumber || "";
-        body = (jsonData.payload.message || "").trim();
+        rawPhone = jsonData.payload.phoneNumber || "";
+        rawBody = jsonData.payload.message || "";
       } else {
         // Fallback for other formats
-        from = jsonData.from || jsonData.phone || jsonData.phoneNumber || "";
-        body = (jsonData.body || jsonData.message || "").trim();
+        rawPhone = jsonData.from || jsonData.phone || jsonData.phoneNumber || "";
+        rawBody = jsonData.body || jsonData.message || "";
       }
     } else {
       // Form-urlencoded fallback
       const formData = await req.formData();
-      from = formData.get("from") as string || formData.get("phone") as string || "";
-      body = ((formData.get("body") || formData.get("message")) as string)?.trim() || "";
+      rawPhone = formData.get("from") as string || formData.get("phone") as string || "";
+      rawBody = (formData.get("body") || formData.get("message")) as string || "";
     }
 
-    console.log(`Received SMS from ${from}: ${body}`);
+    console.log(`Received SMS from raw phone: ${rawPhone}`);
 
-    if (!from || !body) {
-      console.error("Missing From or Body in webhook");
+    // Validate and sanitize phone number
+    const localPhone = validateIsraeliPhone(rawPhone);
+    if (!localPhone) {
+      console.error(`Invalid phone format received: ${rawPhone}`);
       return new Response(
-        JSON.stringify({ success: false, error: "Missing from or body" }),
+        JSON.stringify({ success: false, error: "Invalid phone number format" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate and sanitize message body
+    const messageBody = validateMessageBody(rawBody);
+    if (!messageBody) {
+      console.error("Missing or invalid message body in webhook");
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing or invalid message body" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
     // Check if the message is "0" for cancellation
-    if (body !== "0") {
+    if (messageBody !== "0") {
       console.log("Message is not a cancellation request");
       return new Response(
         JSON.stringify({ success: true, message: "Not a cancellation request" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
-    }
-
-    // Convert international format back to local (e.g., +972541234567 -> 0541234567)
-    let localPhone = from;
-    if (from.startsWith("+972")) {
-      localPhone = "0" + from.slice(4);
-    } else if (from.startsWith("972")) {
-      localPhone = "0" + from.slice(3);
     }
 
     console.log(`Looking for bookings for phone: ${localPhone}`);

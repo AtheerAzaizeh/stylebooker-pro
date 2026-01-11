@@ -22,6 +22,10 @@ export type Database = {
           customer_name: string
           customer_phone: string
           id: string
+          payment_amount: number | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_status: string | null
           status: string
           updated_at: string
         }
@@ -32,6 +36,10 @@ export type Database = {
           customer_name: string
           customer_phone: string
           id?: string
+          payment_amount?: number | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
           status?: string
           updated_at?: string
         }
@@ -42,6 +50,10 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           id?: string
+          payment_amount?: number | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
           status?: string
           updated_at?: string
         }
