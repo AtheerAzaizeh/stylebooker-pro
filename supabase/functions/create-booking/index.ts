@@ -13,6 +13,9 @@ interface CreateBookingRequest {
   customer_name: string;
   booking_date: string;
   booking_time: string;
+  payment_status?: string | null;
+  payment_amount?: number | null;
+  payment_method?: string | null;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -26,9 +29,9 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { phone, code, customer_name, booking_date, booking_time }: CreateBookingRequest = await req.json();
+    const { phone, code, customer_name, booking_date, booking_time, payment_status, payment_amount, payment_method }: CreateBookingRequest = await req.json();
 
-    console.log(`Creating booking for phone: ${phone}, date: ${booking_date}, time: ${booking_time}`);
+    console.log(`Creating booking for phone: ${phone}, date: ${booking_date}, time: ${booking_time}, payment: ${payment_status}`);
 
     // Validate inputs
     if (!phone || !code || !customer_name || !booking_date || !booking_time) {
@@ -177,15 +180,25 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Create the booking
+    const bookingData: any = {
+      customer_name: customer_name.trim(),
+      customer_phone: phone,
+      booking_date,
+      booking_time,
+      status: "confirmed",
+    };
+
+    // Add payment info if provided
+    if (payment_status) {
+      bookingData.payment_status = payment_status;
+      bookingData.payment_amount = payment_amount;
+      bookingData.payment_method = payment_method;
+      bookingData.payment_date = new Date().toISOString();
+    }
+
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
-      .insert([{
-        customer_name: customer_name.trim(),
-        customer_phone: phone,
-        booking_date,
-        booking_time,
-        status: "confirmed"
-      }])
+      .insert([bookingData])
       .select()
       .single();
 

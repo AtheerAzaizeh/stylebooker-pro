@@ -66,6 +66,9 @@ export function useBookings() {
     booking_date: string;
     booking_time: string;
     code: string;
+    payment_status?: string | null;
+    payment_amount?: number | null;
+    payment_method?: string | null;
   }) => {
     // Use edge function to create booking securely
     const { data, error } = await supabase.functions.invoke("create-booking", {
@@ -75,6 +78,9 @@ export function useBookings() {
         customer_name: booking.customer_name,
         booking_date: booking.booking_date,
         booking_time: booking.booking_time,
+        payment_status: booking.payment_status,
+        payment_amount: booking.payment_amount,
+        payment_method: booking.payment_method,
       },
     });
 
