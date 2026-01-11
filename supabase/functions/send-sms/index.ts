@@ -29,49 +29,63 @@ function formatDateHebrew(dateStr: string): string {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    //const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-    //const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    //const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
+    // capcom6 SMS Gateway Cloud API credentials
+    const smsGatewayLogin = Deno.env.get("SMS_GATEWAY_LOGIN");
+    const smsGatewayPassword = Deno.env.get("SMS_GATEWAY_PASSWORD");
 
-    if (!accountSid || !authToken || !twilioPhone) {
-      throw new Error("Twilio credentials not configured");
+    if (!smsGatewayLogin || !smsGatewayPassword) {
+      console.error("Missing SMS Gateway credentials");
+      throw new Error("SMS Gateway not configured");
     }
 
     const { phone, type, data }: SendSmsRequest = await req.json();
 
+    // Validate Israeli phone number format
     if (!phone || !/^05\d{8}$/.test(phone)) {
       throw new Error("Invalid phone number format");
     }
 
+    // Format phone for international (Israel +972)
     const formattedPhone = `+972${phone.slice(1)}`;
-    let message = "";
 
+    // Generate message based on type
+    let message = "";
     switch (type) {
       case "verification":
         const code = data?.code || Math.floor(100000 + Math.random() * 900000).toString();
         message = `קוד האימות שלך הוא: ${code}\nBARBERSHOP by Mohammad Eyad`;
         
+        // Store verification code in database
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseKey);
         
-        await supabase.from("verification_codes").delete().eq("phone", phone);
+        // Delete old codes for this phone
+        await supabase
+          .from("verification_codes")
+          .delete()
+          .eq("phone", phone);
+        
+        // Insert new code with 5-minute expiry
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
         await supabase.from("verification_codes").insert({
           phone,
           code,
-          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          expires_at: expiresAt,
           verified: false,
         });
+        
         break;
         
       case "booking_confirmation":
         const formattedDateConfirm = data?.date ? formatDateHebrew(data.date) : data?.date;
-        message = `✂️ התור שלך אושר!\n📅 תאריך: ${formattedDateCancel}\n⏰ שעה: ${data?.time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\n\nBARBERSHOP by Mohammad Eyad`;
+        message = `התור שלך אושר!\nתאריך: ${formattedDateConfirm}\nשעה: ${data?.time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\nBARBERSHOP by Mohammad Eyad`;
         break;
         
       case "booking_cancelled":
@@ -81,40 +95,63 @@ const handler = async (req: Request): Promise<Response> => {
         
       case "booking_updated":
         const formattedDateUpdate = data?.date ? formatDateHebrew(data.date) : data?.date;
-        message = `התור שלך עודכן!\nתאריך: ${formattedDateUpdate}\nשעה: ${data?.time}\n\nלביטול התור שלח 0 (לפחות 3 שעות לפני התור)\n\nBARBERSHOP by Mohammad Eyad`;
+        message = `התור שלך עודכן!\nתאריך: ${formattedDateUpdate}\nשעה: ${data?.time}\nBARBERSHOP by Mohammad Eyad`;
         break;
         
       default:
         throw new Error("Invalid message type");
     }
 
-    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+    console.log(`Sending SMS via capcom6 Gateway to ${formattedPhone}: ${type}`);
+
+    // Send SMS via capcom6 SMS Gateway Cloud API
+    // API docs: https://docs.sms-gate.app/integration/api/
+    const gatewayUrl = "https://api.sms-gate.app/3rdparty/v1/message";
+    
+    // Basic Auth header
+    const authHeader = "Basic " + btoa(`${smsGatewayLogin}:${smsGatewayPassword}`);
+
+    const response = await fetch(gatewayUrl, {
       method: "POST",
       headers: {
-        "Authorization": `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/json",
+        "Authorization": authHeader,
       },
-      body: new URLSearchParams({
-        To: formattedPhone,
-        From: twilioPhone,
-        Body: message,
+      body: JSON.stringify({
+        textMessage: { text: message },
+        phoneNumbers: [formattedPhone],
       }),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    console.log(`capcom6 Gateway response (${response.status}):`, responseText);
 
     if (!response.ok) {
-      throw new Error(result.message || "Failed to send SMS");
+      console.error("capcom6 Gateway error:", responseText);
+      throw new Error("Failed to send SMS via gateway");
     }
 
+    console.log("SMS sent successfully via capcom6 Gateway");
+
     return new Response(
-      JSON.stringify({ success: true, messageId: result.sid, type }),
-      { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      JSON.stringify({ 
+        success: true, 
+        type,
+        gateway: "capcom6"
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
     );
   } catch (error: any) {
+    console.error("Error in send-sms function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
     );
   }
 };

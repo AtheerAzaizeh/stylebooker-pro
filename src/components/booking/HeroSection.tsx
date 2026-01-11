@@ -31,9 +31,18 @@ export function HeroSection({
         <div className="flex flex-wrap justify-center gap-8 mb-10 animate-fade-in" style={{
         animationDelay: "0.2s"
       }}>
-          <InfoItem icon={<Phone className="w-6 h-6" />} text={BARBERSHOP_CONFIG.phone} />
+          <a href={`tel:${BARBERSHOP_CONFIG.phone}`} className="cursor-pointer hover:opacity-80 transition-opacity">
+            <InfoItem icon={<Phone className="w-6 h-6" />} text={BARBERSHOP_CONFIG.phone} />
+          </a>
           <InfoItem icon={<Clock className="w-6 h-6" />} text={`${BARBERSHOP_CONFIG.hours} א'-ו'`} />
-          <InfoItem icon={<MapPin className="w-6 h-6" />} text={BARBERSHOP_CONFIG.location} />
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BARBERSHOP_CONFIG.address)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+          >
+            <InfoItem icon={<MapPin className="w-6 h-6" />} text={BARBERSHOP_CONFIG.location} />
+          </a>
         </div>
 
         {/* Book Button */}
@@ -42,6 +51,14 @@ export function HeroSection({
       }}>
             קביעת תור
           </button>}
+
+        {/* Privacy Policy Link */}
+        <a 
+          href="/privacy-policy" 
+          className="absolute bottom-4 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+        >
+          מדיניות פרטיות
+        </a>
       </div>
     </section>;
 }
