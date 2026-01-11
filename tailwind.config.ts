@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        abril: ["Abril Fatface", "cursive"],
+        abril: ["Abril Fatface", "Georgia", "Times New Roman", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
