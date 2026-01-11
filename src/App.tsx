@@ -5,7 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-const Index = lazy(() => import("./pages/Index"));
+// Eager load Index since it's the main landing page - avoids critical path chain
+import Index from "./pages/Index";
+
+// Lazy load secondary pages
 const Admin = lazy(() => import("./pages/Admin"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
