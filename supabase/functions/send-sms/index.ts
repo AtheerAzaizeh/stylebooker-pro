@@ -32,6 +32,34 @@ function formatDateHebrew(dateStr: string): string {
   return `יום ${dayName} ${day}/${month}`;
 }
 
+// SMS types that require admin authentication when called from client
+const ADMIN_ONLY_SMS_TYPES = ["booking_cancelled", "booking_updated"];
+
+// Check if the request is from an internal service (edge function to edge function)
+function isInternalServiceCall(req: Request): boolean {
+  // Internal calls from other edge functions use service role key via supabase.functions.invoke
+  // These don't have a Bearer token but are authenticated via the service role
+  const authHeader = req.headers.get("Authorization");
+  
+  // If there's no auth header but the call came from supabase functions invoke,
+  // it's an internal call (Supabase automatically handles this)
+  if (!authHeader) {
+    return false;
+  }
+  
+  // Check if it's a service role call (internal)
+  // Service role calls will have the anon key or service key
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  
+  // The auth header for internal invoke calls uses the anon key
+  if (authHeader === `Bearer ${anonKey}` || authHeader === `Bearer ${supabaseKey}`) {
+    return true;
+  }
+  
+  return false;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -39,6 +67,10 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // capcom6 SMS Gateway Cloud API credentials
     const smsGatewayLogin = Deno.env.get("SMS_GATEWAY_LOGIN");
     const smsGatewayPassword = Deno.env.get("SMS_GATEWAY_PASSWORD");
@@ -49,6 +81,53 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const { phone, type, data }: SendSmsRequest = await req.json();
+
+    // Access control for client-side calls
+    // Verification SMS can be sent by anyone (that's the point of phone verification)
+    // Booking confirmations can be sent internally by edge functions
+    // Update/Cancel SMS require admin authentication when called from client
+    
+    const isInternal = isInternalServiceCall(req);
+    
+    if (!isInternal && ADMIN_ONLY_SMS_TYPES.includes(type)) {
+      // This is a client-side call for admin-only SMS types - verify admin
+      const authHeader = req.headers.get("Authorization");
+      
+      if (!authHeader) {
+        console.error("Unauthorized attempt to send admin SMS without auth");
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !user) {
+        console.error("Invalid auth token for admin SMS");
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Check if user is admin
+      const { data: isAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+
+      if (!isAdmin) {
+        console.error("Non-admin user attempted to send admin SMS:", user.id);
+        return new Response(
+          JSON.stringify({ error: "Forbidden - Admin only" }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      console.log("Admin SMS access verified for user:", user.id);
+    }
 
     // Validate Israeli phone number format
     if (!phone || !/^05\d{8}$/.test(phone)) {
@@ -66,11 +145,6 @@ const handler = async (req: Request): Promise<Response> => {
         const isTestAccount = phone === TEST_PHONE;
         const code = isTestAccount ? TEST_CODE : (data?.code || Math.floor(100000 + Math.random() * 900000).toString());
         message = `קוד האימות שלך הוא: ${code}\nBARBERSHOP by Mohammad Eyad`;
-        
-        // Store verification code in database
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const supabase = createClient(supabaseUrl, supabaseKey);
         
         // Delete old codes for this phone
         await supabase
