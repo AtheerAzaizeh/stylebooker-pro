@@ -1,6 +1,6 @@
 import { Phone, Clock, MapPin } from "lucide-react";
 import { BARBERSHOP_CONFIG } from "@/lib/constants";
-import heroImage from "@/assets/hero-barbershop-compressed.webp";
+import heroImage from "@/assets/hero-barbershop.webp";
 import heroImageMobile from "@/assets/hero-barbershop-mobile.webp";
 
 interface HeroSectionProps {
