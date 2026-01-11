@@ -26,8 +26,8 @@ async function getPayPalAccessToken(): Promise<string> {
 
   const auth = btoa(`${clientId}:${clientSecret}`);
   
-  // Use sandbox for testing, change to api-m.paypal.com for production
-  const response = await fetch("https://api-m.sandbox.paypal.com/v1/oauth2/token", {
+  // Production PayPal API
+  const response = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
     method: "POST",
     headers: {
       "Authorization": `Basic ${auth}`,
@@ -63,8 +63,8 @@ async function createOrder(amount: number, currency: string = "ILS"): Promise<an
 
   console.log("Creating PayPal order:", JSON.stringify(orderData));
 
-  // Use sandbox for testing, change to api-m.paypal.com for production
-  const response = await fetch("https://api-m.sandbox.paypal.com/v2/checkout/orders", {
+  // Production PayPal API
+  const response = await fetch("https://api-m.paypal.com/v2/checkout/orders", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${accessToken}`,
@@ -90,8 +90,8 @@ async function captureOrder(orderId: string): Promise<any> {
 
   console.log("Capturing PayPal order:", orderId);
 
-  // Use sandbox for testing, change to api-m.paypal.com for production
-  const response = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`, {
+  // Production PayPal API
+  const response = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${accessToken}`,
