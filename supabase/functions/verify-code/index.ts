@@ -83,7 +83,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in verify-code function:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: "אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב מאוחר יותר." }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
