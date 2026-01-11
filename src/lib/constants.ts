@@ -19,6 +19,15 @@ export const BARBERSHOP_CONFIG = {
   
   // Cancellation policy
   minCancelHours: 3, // Must cancel at least 3 hours before
+  
+  // Pricing
+  basePrice: 50, // 50 NIS
+};
+
+// PayPal Configuration
+export const PAYPAL_CONFIG = {
+  clientId: "AZ0_fzfKmk2cBqXiO2eNcGW3vCh8xNQZxn6jCWN8bQmjGPXKJQmZvQ8vGAGNQyXt8gCdNPXB5qLAGVxQ", // Replace with your PayPal client ID
+  currency: "ILS",
 };
 
 // Hebrew day names

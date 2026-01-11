@@ -4,7 +4,8 @@ import { DaySelector } from "./DaySelector";
 import { TimeSelector } from "./TimeSelector";
 import { VerificationModal } from "./VerificationModal";
 import { SuccessModal } from "./SuccessModal";
-import { HEBREW_DAYS, toDateKey } from "@/lib/constants";
+import { PaymentModal } from "./PaymentModal";
+import { HEBREW_DAYS, toDateKey, BARBERSHOP_CONFIG } from "@/lib/constants";
 import { useBookings } from "@/hooks/useBookings";
 import { useClosedSlots } from "@/hooks/useClosedSlots";
 import { bookingSchema } from "@/lib/validations";
@@ -20,6 +21,7 @@ export function BookingForm({ onClose }: BookingFormProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [showVerification, setShowVerification] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{
     name?: string;
@@ -27,6 +29,7 @@ export function BookingForm({ onClose }: BookingFormProps) {
   }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
+  const [paymentTransactionId, setPaymentTransactionId] = useState<string | null>(null);
 
   const { createBooking, getBookedTimesForDate } = useBookings();
   const { isSlotClosed } = useClosedSlots();
@@ -71,8 +74,13 @@ export function BookingForm({ onClose }: BookingFormProps) {
 
   const handleVerificationSuccess = async (code: string) => {
     setShowVerification(false);
-    setIsSubmitting(true);
     setVerificationCode(code);
+    // Show payment modal after verification
+    setShowPayment(true);
+  };
+
+  const completeBooking = async (transactionId: string | null = null) => {
+    setIsSubmitting(true);
 
     try {
       if (!selectedDate || !selectedTime) return;
@@ -82,7 +90,10 @@ export function BookingForm({ onClose }: BookingFormProps) {
         customer_phone: phone.trim(),
         booking_date: toDateKey(selectedDate),
         booking_time: selectedTime,
-        code,
+        code: verificationCode,
+        payment_status: transactionId ? "paid" : "pending",
+        payment_amount: transactionId ? BARBERSHOP_CONFIG.basePrice : null,
+        payment_method: transactionId ? "paypal" : null,
       });
 
       setShowSuccess(true);
@@ -93,6 +104,17 @@ export function BookingForm({ onClose }: BookingFormProps) {
     }
   };
 
+  const handlePaymentSuccess = async (transactionId: string) => {
+    setShowPayment(false);
+    setPaymentTransactionId(transactionId);
+    await completeBooking(transactionId);
+  };
+
+  const handleSkipPayment = async () => {
+    setShowPayment(false);
+    await completeBooking(null);
+  };
+
   const handleSuccessClose = () => {
     setShowSuccess(false);
     // Reset form
@@ -101,6 +123,8 @@ export function BookingForm({ onClose }: BookingFormProps) {
     setSelectedDate(null);
     setSelectedTime(null);
     setValidationErrors({});
+    setVerificationCode("");
+    setPaymentTransactionId(null);
     onClose?.();
   };
 
@@ -166,6 +190,11 @@ export function BookingForm({ onClose }: BookingFormProps) {
             isSlotClosed={isSlotClosed}
           />
 
+          {/* Price Info */}
+          <div className="text-center text-muted-foreground text-sm">
+            מחיר תספורת: ₪{BARBERSHOP_CONFIG.basePrice}
+          </div>
+
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
@@ -183,6 +212,14 @@ export function BookingForm({ onClose }: BookingFormProps) {
         onClose={() => setShowVerification(false)}
         onSuccess={handleVerificationSuccess}
         phone={phone}
+      />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPayment}
+        onClose={() => setShowPayment(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        onSkipPayment={handleSkipPayment}
       />
 
       {/* Success Modal */}
