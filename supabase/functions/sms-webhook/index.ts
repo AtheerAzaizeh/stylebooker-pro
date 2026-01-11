@@ -75,6 +75,19 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Verify webhook authentication token
+    const url = new URL(req.url);
+    const token = url.searchParams.get("token");
+    const expectedToken = Deno.env.get("SMS_WEBHOOK_AUTH_TOKEN");
+
+    if (!expectedToken || token !== expectedToken) {
+      console.error("Unauthorized webhook request - invalid or missing token");
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);

@@ -35,12 +35,40 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
-    // Validate code format
+    // Validate code format (6 digits)
     if (!/^\d{6}$/.test(code)) {
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: "קוד לא תקין" 
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Validate time format (HH:MM) to prevent SQL injection
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(booking_time)) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "פורמט שעה לא תקין" 
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Validate date format (YYYY-MM-DD) to prevent SQL injection
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(booking_date)) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "פורמט תאריך לא תקין" 
         }),
         {
           status: 200,
@@ -106,15 +134,36 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if slot is closed
-    const { data: closedSlot } = await supabase
+    // Check if entire day is closed (closed_time is null means full day closed)
+    const { data: dayClosedSlot } = await supabase
       .from("closed_slots")
       .select("id")
       .eq("closed_date", booking_date)
-      .or(`closed_time.eq.${booking_time},closed_time.is.null`)
+      .is("closed_time", null)
       .maybeSingle();
 
-    if (closedSlot) {
+    if (dayClosedSlot) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "השעה הזו לא זמינה" 
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Check if specific time slot is closed
+    const { data: timeClosedSlot } = await supabase
+      .from("closed_slots")
+      .select("id")
+      .eq("closed_date", booking_date)
+      .eq("closed_time", booking_time)
+      .maybeSingle();
+
+    if (timeClosedSlot) {
       return new Response(
         JSON.stringify({ 
           success: false, 

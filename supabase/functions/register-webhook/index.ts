@@ -15,13 +15,19 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const smsGatewayLogin = Deno.env.get("SMS_GATEWAY_LOGIN");
     const smsGatewayPassword = Deno.env.get("SMS_GATEWAY_PASSWORD");
+    const webhookAuthToken = Deno.env.get("SMS_WEBHOOK_AUTH_TOKEN");
 
     if (!smsGatewayLogin || !smsGatewayPassword) {
       throw new Error("Missing SMS Gateway credentials");
     }
 
+    if (!webhookAuthToken) {
+      throw new Error("Missing SMS_WEBHOOK_AUTH_TOKEN secret");
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const webhookUrl = `${supabaseUrl}/functions/v1/sms-webhook`;
+    // Include auth token in webhook URL for authentication
+    const webhookUrl = `${supabaseUrl}/functions/v1/sms-webhook?token=${encodeURIComponent(webhookAuthToken)}`;
 
     console.log(`Registering webhook: ${webhookUrl}`);
 
