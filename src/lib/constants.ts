@@ -24,9 +24,9 @@ export const BARBERSHOP_CONFIG = {
   basePrice: 50, // 50 NIS
 };
 
-// PayPal Configuration
+// PayPal Configuration - Production
 export const PAYPAL_CONFIG = {
-  clientId: "AZ0_fzfKmk2cBqXiO2eNcGW3vCh8xNQZxn6jCWN8bQmjGPXKJQmZvQ8vGAGNQyXt8gCdNPXB5qLAGVxQ", // Replace with your PayPal client ID
+  clientId: "AY8kXNbjjksL3UEKHwXOQopaI-kJFsaFyV65QCHBBUgtQ9e6FUk-w8p9gk0t7cZXNsCXzcYC89KIHuO4",
   currency: "ILS",
 };
 
