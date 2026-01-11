@@ -196,3 +196,5 @@ export function BookingForm({ onClose }: BookingFormProps) {
     </div>
   );
 }
+
+export default BookingForm;
