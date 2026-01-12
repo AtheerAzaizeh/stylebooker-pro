@@ -100,30 +100,18 @@ export function PaymentModal({
           setIsProcessing(true);
           try {
             const { data, error } = await supabase.functions.invoke("paypal-handler", {
-              body: { amount, currency: "ILS" },
-              headers: { "Content-Type": "application/json" },
+              body: { action: "create", amount, currency: "ILS" },
             });
 
-            // Handle the query param for action
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paypal-handler?action=create`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                },
-                body: JSON.stringify({ amount, currency: "ILS" }),
-              }
-            );
-
-            const result = await response.json();
+            if (error) {
+              throw new Error(error.message || "Failed to create order");
+            }
             
-            if (!result.success) {
-              throw new Error(result.error || "Failed to create order");
+            if (!data?.success) {
+              throw new Error(data?.error || "Failed to create order");
             }
 
-            return result.orderId;
+            return data.orderId;
           } catch (error) {
             console.error("Error creating order:", error);
             toast.error("שגיאה ביצירת ההזמנה");
@@ -131,27 +119,21 @@ export function PaymentModal({
             throw error;
           }
         },
-        onApprove: async (data: any) => {
+        onApprove: async (paypalData: any) => {
           try {
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paypal-handler?action=capture`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                },
-                body: JSON.stringify({ orderId: data.orderID }),
-              }
-            );
+            const { data, error } = await supabase.functions.invoke("paypal-handler", {
+              body: { action: "capture", orderId: paypalData.orderID },
+            });
 
-            const result = await response.json();
+            if (error) {
+              throw new Error(error.message || "Payment capture failed");
+            }
             
-            if (result.success) {
+            if (data?.success) {
               toast.success("התשלום בוצע בהצלחה!");
-              onPaymentSuccess(result.transactionId || data.orderID);
+              onPaymentSuccess(data.transactionId || paypalData.orderID);
             } else {
-              throw new Error(result.error || "Payment capture failed");
+              throw new Error(data?.error || "Payment capture failed");
             }
           } catch (error) {
             console.error("Error capturing payment:", error);
