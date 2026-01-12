@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Loader2, CreditCard, Lock } from "lucide-react";
+import { X, Loader2, CreditCard, Lock, AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
 import {
   PayPalScriptProvider,
   PayPalCardFieldsProvider,
@@ -11,14 +11,16 @@ import {
 } from "@paypal/react-paypal-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { BARBERSHOP_CONFIG } from "@/lib/constants";
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (transactionId: string) => void;
-  amount?: string;
+  onPaymentSuccess: (transactionId: string) => void;
+  onSkipPayment?: () => void; // Made optional to fit both use cases
 }
 
+// Styling for the internal iframe inputs from PayPal
 const styleObject = {
   input: {
     "font-size": "16px",
@@ -30,6 +32,7 @@ const styleObject = {
   ".invalid": { color: "#ef4444" },
 };
 
+// Internal component to access the cardFields context
 const SubmitPayment = ({
   isProcessing,
   setIsProcessing,
@@ -37,7 +40,7 @@ const SubmitPayment = ({
   isProcessing: boolean;
   setIsProcessing: (val: boolean) => void;
 }) => {
-  // FIX 1: Cast to 'any' to bypass TS error regarding cardFields property
+  // Cast to 'any' to avoid type issues with library version mismatches
   const { cardFields } = usePayPalCardFields() as any;
 
   const handleClick = async () => {
@@ -49,7 +52,7 @@ const SubmitPayment = ({
       await cardFields.submit({ payerName: "Customer" });
     } catch (err) {
       console.error("Submit Error:", err);
-      setIsProcessing(false); // Stop loading if submit fails immediately
+      setIsProcessing(false);
     }
   };
 
@@ -74,35 +77,48 @@ const SubmitPayment = ({
   );
 };
 
-export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: PaymentModalProps) {
+export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment }: PaymentModalProps) {
   const [clientToken, setClientToken] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
+  const amount = BARBERSHOP_CONFIG.basePrice.toString(); // e.g. "50"
+
+  // Load Client Token when modal opens
   useEffect(() => {
-    if (isOpen && !clientToken) {
+    if (isOpen) {
+      setLoadError(false);
       const fetchToken = async () => {
         try {
           const { data, error } = await supabase.functions.invoke("paypal-handler", {
             body: { action: "generate_client_token" },
           });
-          if (error || !data?.client_token) throw new Error("Token generation failed");
+
+          if (error || !data?.client_token) {
+            console.error("Token Error:", error || "No token returned");
+            throw new Error("Failed to load payment system");
+          }
+
           setClientToken(data.client_token);
         } catch (err) {
-          console.error("Token Error:", err);
-          toast.error("שגיאה בטעינת מערכת התשלומים");
+          console.error(err);
+          setLoadError(true);
         }
       };
       fetchToken();
     }
-  }, [isOpen, clientToken]);
+  }, [isOpen]);
 
-  // FIX 2: Define specific handlers for the Provider to satisfy TS interfaces
+  // Handlers for PayPal Provider
   const createOrder = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("paypal-handler", {
         body: { action: "create_order", amount },
       });
-      if (error || !data.id) throw new Error("Order creation failed");
+
+      if (error || !data.id) {
+        throw new Error("Order creation failed: " + (error?.message || "Unknown error"));
+      }
       return data.id;
     } catch (err: any) {
       console.error(err);
@@ -124,8 +140,7 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
       }
 
       toast.success("תשלום בוצע בהצלחה!");
-      onSuccess(captureData.id);
-      // Close/cleanup is handled by parent or onSuccess
+      onPaymentSuccess(captureData.id);
     } catch (err: any) {
       console.error(err);
       toast.error("שגיאה בביצוע החיוב הסופי");
@@ -149,34 +164,51 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
       />
 
       <div className="relative z-10 bg-card rounded-xl shadow-xl w-[95%] max-w-md p-6 border animate-in fade-in zoom-in-95 duration-200">
-        <button
-          onClick={onClose}
-          disabled={isProcessing}
-          className="absolute top-4 left-4 text-muted-foreground hover:text-foreground"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={onClose}
+            disabled={isProcessing}
+            className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <h3 className="text-xl font-bold">תשלום מאובטח</h3>
+          <div className="w-5" /> {/* Spacer */}
+        </div>
 
-        <h3 className="text-xl font-bold text-center mb-2">תשלום מאובטח</h3>
-        <p className="text-center text-muted-foreground mb-6">סכום לתשלום: ₪{amount}</p>
+        <p className="text-center text-muted-foreground mb-6 text-lg">
+          סכום לתשלום: <span className="text-foreground font-bold">₪{amount}</span>
+        </p>
 
-        {!clientToken ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        {/* Loading / Error State */}
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <AlertCircle className="w-12 h-12 text-destructive mb-3" />
+            <p className="text-muted-foreground mb-4">לא ניתן לטעון את מערכת התשלום</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              רענן עמוד
+            </button>
+          </div>
+        ) : !clientToken ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-2" />
+            <p className="text-sm text-muted-foreground">טוען חיבור מאובטח...</p>
           </div>
         ) : (
           <PayPalScriptProvider
             options={{
-              clientId: "AY8kXNbjjksL3UEKHwXOQopaI-kJFsaFyV65QCHBBUgtQ9e6FUk-w8p9gk0t7cZXNsCXzcYC89KIHuO4",
+              clientId: "AY8kXNbjjksL3UEKHwXOQopaI-kJFsaFyV65QCHBBUgtQ9e6FUk-w8p9gk0t7cZXNsCXzcYC89KIHuO4", // LIVE ID
               components: "card-fields",
               dataClientToken: clientToken,
               currency: "ILS",
               intent: "capture",
             }}
           >
-            {/* FIX 2: By providing createOrder, onApprove, and onError, 
-                we match the "Checkout" interface, so TS won't ask for "createVaultSetupToken".
-            */}
             <PayPalCardFieldsProvider
               createOrder={createOrder}
               onApprove={onApprove}
@@ -222,6 +254,19 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
               </div>
             </PayPalCardFieldsProvider>
           </PayPalScriptProvider>
+        )}
+
+        {/* Skip Payment Option (if provided) */}
+        {onSkipPayment && !isProcessing && (
+          <div className="mt-6 pt-4 border-t border-border">
+            <button
+              onClick={onSkipPayment}
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>שלם במזומן במקום</span>
+            </button>
+          </div>
         )}
       </div>
     </div>
