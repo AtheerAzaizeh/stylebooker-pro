@@ -4,8 +4,8 @@ import { DaySelector } from "./DaySelector";
 import { TimeSelector } from "./TimeSelector";
 import { VerificationModal } from "./VerificationModal";
 import { SuccessModal } from "./SuccessModal";
-import { PaymentModal } from "./PaymentModal";
-import { HEBREW_DAYS, toDateKey, BARBERSHOP_CONFIG } from "@/lib/constants";
+import { PaymentModal } from "./PaymentModal"; // Import the new modal
+import { HEBREW_DAYS, toDateKey } from "@/lib/constants";
 import { useBookings } from "@/hooks/useBookings";
 import { useClosedSlots } from "@/hooks/useClosedSlots";
 import { bookingSchema } from "@/lib/validations";
@@ -20,16 +20,18 @@ export function BookingForm({ onClose }: BookingFormProps) {
   const [phone, setPhone] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  // Modal States
   const [showVerification, setShowVerification] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
+  const [showPayment, setShowPayment] = useState(false); // New Payment State
   const [showSuccess, setShowSuccess] = useState(false);
+
   const [validationErrors, setValidationErrors] = useState<{
     name?: string;
     phone?: string;
   }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
-  const [paymentTransactionId, setPaymentTransactionId] = useState<string | null>(null);
 
   const { createBooking, getBookedTimesForDate } = useBookings();
   const { isSlotClosed } = useClosedSlots();
@@ -54,14 +56,12 @@ export function BookingForm({ onClose }: BookingFormProps) {
     }
   };
 
-  const isFormValid =
-    name.trim() && phone.trim() && selectedDate && selectedTime;
+  const isFormValid = name.trim() && phone.trim() && selectedDate && selectedTime;
 
   const handleSubmit = () => {
     if (!isFormValid) return;
     if (!validateForm()) return;
 
-    // Check if slot is still available
     if (selectedDate && selectedTime) {
       if (isSlotClosed(selectedDate, selectedTime)) {
         toast.error("השעה הזו לא זמינה יותר");
@@ -72,14 +72,17 @@ export function BookingForm({ onClose }: BookingFormProps) {
     setShowVerification(true);
   };
 
-  const handleVerificationSuccess = async (code: string) => {
+  // 1. Called after SMS code is verified
+  const handleVerificationSuccess = (code: string) => {
     setShowVerification(false);
     setVerificationCode(code);
-    // Show payment modal after verification
+    // Open Payment Modal instead of finishing immediately
     setShowPayment(true);
   };
 
-  const completeBooking = async (transactionId: string | null = null) => {
+  // 2. Called after Payment is captured
+  const handlePaymentSuccess = async (transactionId: string) => {
+    setShowPayment(false);
     setIsSubmitting(true);
 
     try {
@@ -91,9 +94,7 @@ export function BookingForm({ onClose }: BookingFormProps) {
         booking_date: toDateKey(selectedDate),
         booking_time: selectedTime,
         code: verificationCode,
-        payment_status: transactionId ? "paid" : "pending",
-        payment_amount: transactionId ? BARBERSHOP_CONFIG.basePrice : null,
-        payment_method: transactionId ? "paypal" : null,
+        // You can save transactionId here if your DB supports it
       });
 
       setShowSuccess(true);
@@ -104,27 +105,13 @@ export function BookingForm({ onClose }: BookingFormProps) {
     }
   };
 
-  const handlePaymentSuccess = async (transactionId: string) => {
-    setShowPayment(false);
-    setPaymentTransactionId(transactionId);
-    await completeBooking(transactionId);
-  };
-
-  const handleSkipPayment = async () => {
-    setShowPayment(false);
-    await completeBooking(null);
-  };
-
   const handleSuccessClose = () => {
     setShowSuccess(false);
-    // Reset form
     setName("");
     setPhone("");
     setSelectedDate(null);
     setSelectedTime(null);
     setValidationErrors({});
-    setVerificationCode("");
-    setPaymentTransactionId(null);
     onClose?.();
   };
 
@@ -145,11 +132,7 @@ export function BookingForm({ onClose }: BookingFormProps) {
               placeholder="הכנס את שמך"
               maxLength={100}
             />
-            {validationErrors.name && (
-              <p className="text-destructive text-xs text-right">
-                {validationErrors.name}
-              </p>
-            )}
+            {validationErrors.name && <p className="text-destructive text-xs text-right">{validationErrors.name}</p>}
           </div>
 
           {/* Phone Input */}
@@ -164,11 +147,7 @@ export function BookingForm({ onClose }: BookingFormProps) {
               dir="ltr"
               maxLength={10}
             />
-            {validationErrors.phone && (
-              <p className="text-destructive text-xs text-right">
-                {validationErrors.phone}
-              </p>
-            )}
+            {validationErrors.phone && <p className="text-destructive text-xs text-right">{validationErrors.phone}</p>}
           </div>
 
           {/* Day Selector */}
@@ -190,18 +169,13 @@ export function BookingForm({ onClose }: BookingFormProps) {
             isSlotClosed={isSlotClosed}
           />
 
-          {/* Price Info */}
-          <div className="text-center text-muted-foreground text-sm">
-            מחיר תספורת: ₪{BARBERSHOP_CONFIG.basePrice}
-          </div>
-
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
             disabled={!isFormValid || isSubmitting}
             className="btn-gold w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "שולח..." : "סיום"}
+            {isSubmitting ? "שולח..." : "המשך לתשלום"}
           </button>
         </div>
       </div>
@@ -214,13 +188,8 @@ export function BookingForm({ onClose }: BookingFormProps) {
         phone={phone}
       />
 
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPayment}
-        onClose={() => setShowPayment(false)}
-        onPaymentSuccess={handlePaymentSuccess}
-        onSkipPayment={handleSkipPayment}
-      />
+      {/* Payment Modal (Replaces old direct success) */}
+      <PaymentModal isOpen={showPayment} onClose={() => setShowPayment(false)} onSuccess={handlePaymentSuccess} />
 
       {/* Success Modal */}
       <SuccessModal
@@ -233,5 +202,3 @@ export function BookingForm({ onClose }: BookingFormProps) {
     </div>
   );
 }
-
-export default BookingForm;
