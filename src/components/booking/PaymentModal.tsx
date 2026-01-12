@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Loader2, CreditCard, Lock, AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
+import { X, Loader2, Lock, AlertCircle, ArrowLeft } from "lucide-react";
 import {
   PayPalScriptProvider,
   PayPalCardFieldsProvider,
@@ -17,10 +17,10 @@ interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPaymentSuccess: (transactionId: string) => void;
-  onSkipPayment?: () => void; // Made optional to fit both use cases
+  onSkipPayment: () => void;
 }
 
-// Styling for the internal iframe inputs from PayPal
+// Styling for the internal input fields (inside the iframe)
 const styleObject = {
   input: {
     "font-size": "16px",
@@ -32,7 +32,7 @@ const styleObject = {
   ".invalid": { color: "#ef4444" },
 };
 
-// Internal component to access the cardFields context
+// Internal component to handle the "Pay" button
 const SubmitPayment = ({
   isProcessing,
   setIsProcessing,
@@ -40,7 +40,7 @@ const SubmitPayment = ({
   isProcessing: boolean;
   setIsProcessing: (val: boolean) => void;
 }) => {
-  // Cast to 'any' to avoid type issues with library version mismatches
+  // Use 'any' to avoid TypeScript strictness with the library context
   const { cardFields } = usePayPalCardFields() as any;
 
   const handleClick = async () => {
@@ -48,7 +48,8 @@ const SubmitPayment = ({
     setIsProcessing(true);
 
     try {
-      // Submitting triggers the createOrder -> onApprove flow defined in the Provider
+      // This submits the card details to PayPal to get a token
+      // It triggers the 'createOrder' function defined in the Provider below
       await cardFields.submit({ payerName: "Customer" });
     } catch (err) {
       console.error("Submit Error:", err);
@@ -79,23 +80,24 @@ const SubmitPayment = ({
 
 export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment }: PaymentModalProps) {
   const [clientToken, setClientToken] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const amount = BARBERSHOP_CONFIG.basePrice.toString(); // e.g. "50"
 
-  // Load Client Token when modal opens
+  // 1. Fetch the PayPal Client Token when modal opens
   useEffect(() => {
     if (isOpen) {
       setLoadError(false);
       const fetchToken = async () => {
         try {
+          // Call your Supabase Edge Function
           const { data, error } = await supabase.functions.invoke("paypal-handler", {
             body: { action: "generate_client_token" },
           });
 
           if (error || !data?.client_token) {
-            console.error("Token Error:", error || "No token returned");
+            console.error("Token Error:", error);
             throw new Error("Failed to load payment system");
           }
 
@@ -109,7 +111,7 @@ export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment 
     }
   }, [isOpen]);
 
-  // Handlers for PayPal Provider
+  // 2. Define Payment Handlers
   const createOrder = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("paypal-handler", {
@@ -117,7 +119,7 @@ export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment 
       });
 
       if (error || !data.id) {
-        throw new Error("Order creation failed: " + (error?.message || "Unknown error"));
+        throw new Error("Order creation failed");
       }
       return data.id;
     } catch (err: any) {
@@ -158,6 +160,7 @@ export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={isProcessing ? undefined : onClose}
@@ -174,24 +177,20 @@ export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment 
             <X className="w-5 h-5" />
           </button>
           <h3 className="text-xl font-bold">תשלום מאובטח</h3>
-          <div className="w-5" /> {/* Spacer */}
+          <div className="w-5" />
         </div>
 
         <p className="text-center text-muted-foreground mb-6 text-lg">
           סכום לתשלום: <span className="text-foreground font-bold">₪{amount}</span>
         </p>
 
-        {/* Loading / Error State */}
+        {/* Content */}
         {loadError ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <AlertCircle className="w-12 h-12 text-destructive mb-3" />
             <p className="text-muted-foreground mb-4">לא ניתן לטעון את מערכת התשלום</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              רענן עמוד
+            <button onClick={onClose} className="btn-outline">
+              סגור
             </button>
           </div>
         ) : !clientToken ? (
@@ -216,6 +215,7 @@ export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment 
               style={styleObject}
             >
               <div className="space-y-4" dir="rtl">
+                {/* Inline Card Fields */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium">שם בעל הכרטיס</label>
                   <div className="h-10 px-3 py-2 border rounded-md bg-white">
@@ -256,7 +256,7 @@ export function PaymentModal({ isOpen, onClose, onPaymentSuccess, onSkipPayment 
           </PayPalScriptProvider>
         )}
 
-        {/* Skip Payment Option (if provided) */}
+        {/* Skip Payment Option */}
         {onSkipPayment && !isProcessing && (
           <div className="mt-6 pt-4 border-t border-border">
             <button
