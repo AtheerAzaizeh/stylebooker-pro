@@ -12,6 +12,10 @@ const corsHeaders = {
 };
 
 async function getAccessToken() {
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET) {
+    throw new Error("Missing PayPal Credentials in Supabase Secrets");
+  }
+
   const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`);
   const response = await fetch(`${PAYPAL_API}/v1/oauth2/token`, {
     method: "POST",
@@ -21,22 +25,43 @@ async function getAccessToken() {
     },
     body: "grant_type=client_credentials",
   });
+
   const data = await response.json();
-  if (!data.access_token) throw new Error("Failed to get PayPal access token");
+  if (!data.access_token) {
+    console.error("PayPal Token Error:", data);
+    throw new Error("Failed to get PayPal access token");
+  }
   return data.access_token;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight request
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, orderID, amount } = await req.json();
+    // 1. Parse Body safely
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      throw new Error("Invalid JSON body");
+    }
+
+    const { action, orderID, amount } = body;
+
+    console.log(`Received Request: ${action}`, body); // Log for debugging
+
+    if (!action) {
+      throw new Error("Missing 'action' field in request body");
+    }
+
     const accessToken = await getAccessToken();
 
-    // 1. Generate Client Token (Required for Inline Card Fields)
+    // 2. Handle Actions
+
+    // --- Generate Client Token ---
     if (action === "generate_client_token") {
       const response = await fetch(`${PAYPAL_API}/v1/identity/generate-token`, {
         method: "POST",
@@ -49,7 +74,7 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 2. Create Order
+    // --- Create Order ---
     if (action === "create_order") {
       const response = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
         method: "POST",
@@ -63,18 +88,27 @@ serve(async (req) => {
             {
               amount: {
                 currency_code: "ILS",
-                value: amount || "50.00", // Default amount or passed from frontend
+                value: amount || "50.00",
               },
             },
           ],
         }),
       });
+
       const data = await response.json();
+      console.log("Order Created:", data);
+
+      if (data.error || data.name === "INVALID_REQUEST") {
+        throw new Error("PayPal Create Order Failed: " + JSON.stringify(data));
+      }
+
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3. Capture Order
+    // --- Capture Order ---
     if (action === "capture_order") {
+      if (!orderID) throw new Error("Missing orderID for capture");
+
       const response = await fetch(`${PAYPAL_API}/v2/checkout/orders/${orderID}/capture`, {
         method: "POST",
         headers: {
@@ -82,15 +116,19 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
       });
+
       const data = await response.json();
+      console.log("Order Captured:", data);
+
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    throw new Error(`Invalid action: ${action}`);
+    // Default Case
+    throw new Error(`Unknown action received: "${action}"`);
   } catch (error: any) {
-    console.error("PayPal Function Error:", error);
+    console.error("Handler Error:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
+      status: 400, // Return 400 to match user observation
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
