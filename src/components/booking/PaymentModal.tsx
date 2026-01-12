@@ -1,326 +1,202 @@
-import { useState, useEffect, useRef } from "react";
-import { X, CreditCard, ArrowLeft, Loader2, AlertCircle, RefreshCw, Lock } from "lucide-react";
-import { BARBERSHOP_CONFIG, PAYPAL_CONFIG } from "@/lib/constants";
+import { useState, useEffect } from "react";
+import { X, Loader2, CreditCard, Lock } from "lucide-react";
+import {
+  PayPalScriptProvider,
+  PayPalCardFieldsProvider,
+  PayPalNameField,
+  PayPalNumberField,
+  PayPalExpiryField,
+  PayPalCVVField,
+  usePayPalCardFields,
+} from "@paypal/react-paypal-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPaymentSuccess: (transactionId: string) => void;
-  onSkipPayment: () => void;
+  onSuccess: (transactionId: string) => void;
+  amount?: string;
 }
 
-declare global {
-  interface Window {
-    paypal?: any;
-  }
-}
+// Styling for the internal iframe inputs from PayPal
+const styleObject = {
+  input: {
+    "font-size": "16px",
+    "font-family": "sans-serif",
+    color: "#333",
+    padding: "0 10px",
+    direction: "ltr",
+  },
+  ".invalid": { color: "#ef4444" },
+};
 
-export function PaymentModal({
-  isOpen,
-  onClose,
-  onPaymentSuccess,
-  onSkipPayment,
-}: PaymentModalProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [sdkReady, setSdkReady] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const [loadAttempts, setLoadAttempts] = useState(0);
-  const paypalContainerRef = useRef<HTMLDivElement>(null);
-  const buttonsRendered = useRef(false);
+// Internal component to access the cardFields context
+const SubmitPayment = ({
+  isProcessing,
+  setIsProcessing,
+  onSuccess,
+}: {
+  isProcessing: boolean;
+  setIsProcessing: (val: boolean) => void;
+  onSuccess: (id: string) => void;
+}) => {
+  const { cardFields } = usePayPalCardFields();
 
-  const amount = BARBERSHOP_CONFIG.basePrice;
+  const handlePayment = async () => {
+    if (!cardFields) return;
 
-  // Load PayPal SDK
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const loadPayPalSdk = () => {
-      // Clean up any existing PayPal script
-      const existingScript = document.querySelector('script[src*="paypal.com/sdk"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
-      
-      // Delete existing paypal object
-      if (window.paypal) {
-        delete window.paypal;
-      }
-
-      setSdkReady(false);
-      setLoadError(false);
-      buttonsRendered.current = false;
-
-      const script = document.createElement("script");
-      // Load PayPal SDK with buttons - enable card funding for direct card payments in popup
-      script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CONFIG.clientId}&currency=${PAYPAL_CONFIG.currency}&intent=capture`;
-      script.async = true;
-
-      script.onload = () => {
-        console.log("PayPal SDK loaded successfully");
-        setSdkReady(true);
-        setLoadError(false);
-      };
-
-      script.onerror = () => {
-        console.error("Failed to load PayPal SDK");
-        setLoadError(true);
-      };
-
-      document.body.appendChild(script);
-    };
-
-    loadPayPalSdk();
-
-    return () => {
-      buttonsRendered.current = false;
-    };
-  }, [isOpen, loadAttempts]);
-
-  // Render PayPal buttons when SDK is ready
-  useEffect(() => {
-    if (!sdkReady || !window.paypal || !paypalContainerRef.current || buttonsRendered.current) {
-      return;
-    }
-
-    // Clear container
-    paypalContainerRef.current.innerHTML = "";
-    buttonsRendered.current = true;
-
+    setIsProcessing(true);
     try {
-      window.paypal.Buttons({
-        style: {
-          layout: "vertical",
-          color: "gold",
-          shape: "rect",
-          label: "pay",
-          height: 48,
-        },
-        fundingSource: window.paypal.FUNDING.CARD, // Prioritize card payment
-        createOrder: async () => {
-          setIsProcessing(true);
-          try {
-            const { data, error } = await supabase.functions.invoke("paypal-handler", {
-              body: { action: "create", amount, currency: "ILS" },
-            });
+      // 1. Create Order
+      const { data: orderData, error: orderError } = await supabase.functions.invoke("paypal-handler", {
+        body: { action: "create_order", amount: "50.00" }, // Set your price here
+      });
 
-            if (error) {
-              throw new Error(error.message || "Failed to create order");
-            }
-            
-            if (!data?.success) {
-              throw new Error(data?.error || "Failed to create order");
-            }
+      if (orderError || !orderData.id) throw new Error("Could not create payment order");
 
-            console.log("Order created:", data.orderId);
-            return data.orderId;
-          } catch (error) {
-            console.error("Error creating order:", error);
-            toast.error("שגיאה ביצירת ההזמנה");
-            setIsProcessing(false);
-            throw error;
-          }
-        },
-        onApprove: async (paypalData: any) => {
-          try {
-            console.log("Payment approved, capturing...", paypalData);
-            const { data, error } = await supabase.functions.invoke("paypal-handler", {
-              body: { action: "capture", orderId: paypalData.orderID },
-            });
+      // 2. Submit Card Fields (Tokenize)
+      await cardFields.submit({ payerName: "Customer" });
 
-            if (error) {
-              throw new Error(error.message || "Payment capture failed");
-            }
-            
-            if (data?.success) {
-              toast.success("התשלום בוצע בהצלחה!");
-              onPaymentSuccess(data.transactionId || paypalData.orderID);
-            } else {
-              throw new Error(data?.error || "Payment capture failed");
-            }
-          } catch (error) {
-            console.error("Error capturing payment:", error);
-            toast.error("שגיאה בביצוע התשלום");
-          } finally {
-            setIsProcessing(false);
-          }
-        },
-        onCancel: () => {
-          setIsProcessing(false);
-          toast.info("התשלום בוטל");
-        },
-        onError: (err: any) => {
-          console.error("PayPal error:", err);
-          setIsProcessing(false);
-          toast.error("שגיאה בתהליך התשלום");
-        },
-      }).render(paypalContainerRef.current);
+      // 3. Capture Payment
+      const { data: captureData, error: captureError } = await supabase.functions.invoke("paypal-handler", {
+        body: { action: "capture_order", orderID: orderData.id },
+      });
 
-      // Also render PayPal button as secondary option
-      if (paypalContainerRef.current) {
-        const paypalButtonContainer = document.createElement("div");
-        paypalButtonContainer.style.marginTop = "12px";
-        paypalContainerRef.current.appendChild(paypalButtonContainer);
-
-        window.paypal.Buttons({
-          style: {
-            layout: "vertical",
-            color: "blue",
-            shape: "rect",
-            label: "paypal",
-            height: 48,
-          },
-          fundingSource: window.paypal.FUNDING.PAYPAL,
-          createOrder: async () => {
-            setIsProcessing(true);
-            try {
-              const { data, error } = await supabase.functions.invoke("paypal-handler", {
-                body: { action: "create", amount, currency: "ILS" },
-              });
-
-              if (error) {
-                throw new Error(error.message || "Failed to create order");
-              }
-              
-              if (!data?.success) {
-                throw new Error(data?.error || "Failed to create order");
-              }
-
-              return data.orderId;
-            } catch (error) {
-              console.error("Error creating order:", error);
-              toast.error("שגיאה ביצירת ההזמנה");
-              setIsProcessing(false);
-              throw error;
-            }
-          },
-          onApprove: async (paypalData: any) => {
-            try {
-              const { data, error } = await supabase.functions.invoke("paypal-handler", {
-                body: { action: "capture", orderId: paypalData.orderID },
-              });
-
-              if (error) {
-                throw new Error(error.message || "Payment capture failed");
-              }
-              
-              if (data?.success) {
-                toast.success("התשלום בוצע בהצלחה!");
-                onPaymentSuccess(data.transactionId || paypalData.orderID);
-              } else {
-                throw new Error(data?.error || "Payment capture failed");
-              }
-            } catch (error) {
-              console.error("Error capturing payment:", error);
-              toast.error("שגיאה בביצוע התשלום");
-            } finally {
-              setIsProcessing(false);
-            }
-          },
-          onCancel: () => {
-            setIsProcessing(false);
-            toast.info("התשלום בוטל");
-          },
-          onError: (err: any) => {
-            console.error("PayPal error:", err);
-            setIsProcessing(false);
-            toast.error("שגיאה בתהליך התשלום");
-          },
-        }).render(paypalButtonContainer);
+      if (captureError || captureData.status !== "COMPLETED") {
+        throw new Error("Payment capture failed. Please check your details.");
       }
-    } catch (error) {
-      console.error("Error rendering PayPal buttons:", error);
-      setLoadError(true);
-    }
-  }, [sdkReady, amount, onPaymentSuccess]);
 
-  const handleRetryLoad = () => {
-    setLoadAttempts((prev) => prev + 1);
+      toast.success("תשלום בוצע בהצלחה!");
+      onSuccess(captureData.id);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "שגיאה בביצוע התשלום");
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  return (
+    <button
+      onClick={handlePayment}
+      disabled={isProcessing}
+      className="btn-gold w-full mt-6 h-12 text-lg flex items-center justify-center gap-2 relative overflow-hidden"
+    >
+      {isProcessing ? (
+        <>
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>מעבד תשלום...</span>
+        </>
+      ) : (
+        <>
+          <Lock className="w-4 h-4" />
+          <span>שלם בבטחה</span>
+        </>
+      )}
+    </button>
+  );
+};
+
+export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: PaymentModalProps) {
+  const [clientToken, setClientToken] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && !clientToken) {
+      const fetchToken = async () => {
+        const { data, error } = await supabase.functions.invoke("paypal-handler", {
+          body: { action: "generate_client_token" },
+        });
+        if (data?.client_token) {
+          setClientToken(data.client_token);
+        } else {
+          console.error("Token Error:", error);
+          toast.error("שגיאה בטעינת מערכת התשלומים");
+        }
+      };
+      fetchToken();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-card rounded-2xl w-full max-w-md shadow-2xl overflow-hidden relative">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-muted rounded-full transition-colors"
-            disabled={isProcessing}
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        onClick={isProcessing ? undefined : onClose}
+      />
+
+      <div className="relative z-10 bg-card rounded-xl shadow-xl w-[95%] max-w-md p-6 border animate-in fade-in zoom-in-95 duration-200">
+        <button
+          onClick={onClose}
+          disabled={isProcessing}
+          className="absolute top-4 left-4 text-muted-foreground hover:text-foreground"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <h3 className="text-xl font-bold text-center mb-2">תשלום מאובטח</h3>
+        <p className="text-center text-muted-foreground mb-6">סכום לתשלום: ₪{amount}</p>
+
+        {!clientToken ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <PayPalScriptProvider
+            options={{
+              clientId: "AY8kXNbjjksL3UEKHwXOQopaI-kJFsaFyV65QCHBBUgtQ9e6FUk-w8p9gk0t7cZXNsCXzcYC89KIHuO4", // Your Live Client ID
+              components: "card-fields",
+              dataClientToken: clientToken,
+              currency: "ILS",
+              intent: "capture",
+            }}
           >
-            <X className="w-5 h-5" />
-          </button>
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            תשלום מאובטח
-          </h3>
-          <div className="w-9" />
-        </div>
+            <PayPalCardFieldsProvider createOrder={async () => ""} onApprove={async () => {}} style={styleObject}>
+              <div className="space-y-4" dir="rtl">
+                {/* Name Field */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">שם בעל הכרטיס</label>
+                  <div className="h-10 px-3 py-2 border rounded-md bg-white">
+                    <PayPalNameField className="w-full h-full" />
+                  </div>
+                </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Price Display */}
-          <div className="text-center">
-            <p className="text-muted-foreground text-sm">סכום לתשלום</p>
-            <p className="text-4xl font-bold text-primary mt-1">₪{amount}</p>
-          </div>
+                {/* Card Number */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">מספר כרטיס</label>
+                  <div className="h-10 px-3 py-2 border rounded-md bg-white">
+                    <PayPalNumberField className="w-full h-full" />
+                  </div>
+                </div>
 
-          {/* PayPal Buttons Container */}
-          <div className="min-h-[150px]">
-            {loadError ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <AlertCircle className="w-12 h-12 text-destructive mb-3" />
-                <p className="text-muted-foreground mb-4">
-                  לא ניתן לטעון את מערכת התשלום
-                </p>
-                <button
-                  onClick={handleRetryLoad}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  נסה שוב
-                </button>
+                {/* Expiry & CVV */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">תוקף</label>
+                    <div className="h-10 px-3 py-2 border rounded-md bg-white">
+                      <PayPalExpiryField className="w-full h-full" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">CVV</label>
+                    <div className="h-10 px-3 py-2 border rounded-md bg-white">
+                      <PayPalCVVField className="w-full h-full" />
+                    </div>
+                  </div>
+                </div>
+
+                <SubmitPayment isProcessing={isProcessing} setIsProcessing={setIsProcessing} onSuccess={onSuccess} />
+
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
+                  <Lock className="w-3 h-3" />
+                  <span>מאובטח ע״י PayPal</span>
+                </div>
               </div>
-            ) : !sdkReady ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
-                <p className="text-muted-foreground">טוען אפשרויות תשלום...</p>
-              </div>
-            ) : (
-              <div ref={paypalContainerRef} />
-            )}
-          </div>
-
-          {/* Skip Payment Option */}
-          <div className="pt-4 border-t border-border">
-            <button
-              onClick={onSkipPayment}
-              disabled={isProcessing}
-              className="w-full flex items-center justify-center gap-2 py-3 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>המשך ללא תשלום מקדים (₪{amount} במקום)</span>
-            </button>
-          </div>
-
-          {/* Security Info */}
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Lock className="w-3 h-3" />
-            <span>התשלום מאובטח ומוצפן באמצעות PayPal</span>
-          </div>
-        </div>
-
-        {/* Processing Overlay */}
-        {isProcessing && (
-          <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10">
-            <div className="text-center">
-              <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-3" />
-              <p className="font-medium">מעבד תשלום...</p>
-            </div>
-          </div>
+            </PayPalCardFieldsProvider>
+          </PayPalScriptProvider>
         )}
       </div>
     </div>
