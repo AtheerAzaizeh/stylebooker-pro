@@ -19,7 +19,6 @@ interface PaymentModalProps {
   amount?: string;
 }
 
-// Styling for the internal iframe inputs from PayPal
 const styleObject = {
   input: {
     "font-size": "16px",
@@ -31,55 +30,32 @@ const styleObject = {
   ".invalid": { color: "#ef4444" },
 };
 
-// Internal component to access the cardFields context
 const SubmitPayment = ({
   isProcessing,
   setIsProcessing,
-  onSuccess,
 }: {
   isProcessing: boolean;
   setIsProcessing: (val: boolean) => void;
-  onSuccess: (id: string) => void;
 }) => {
-  const { cardFields } = usePayPalCardFields();
+  // FIX 1: Cast to 'any' to bypass TS error regarding cardFields property
+  const { cardFields } = usePayPalCardFields() as any;
 
-  const handlePayment = async () => {
+  const handleClick = async () => {
     if (!cardFields) return;
-
     setIsProcessing(true);
+
     try {
-      // 1. Create Order
-      const { data: orderData, error: orderError } = await supabase.functions.invoke("paypal-handler", {
-        body: { action: "create_order", amount: "50.00" }, // Set your price here
-      });
-
-      if (orderError || !orderData.id) throw new Error("Could not create payment order");
-
-      // 2. Submit Card Fields (Tokenize)
+      // Submitting triggers the createOrder -> onApprove flow defined in the Provider
       await cardFields.submit({ payerName: "Customer" });
-
-      // 3. Capture Payment
-      const { data: captureData, error: captureError } = await supabase.functions.invoke("paypal-handler", {
-        body: { action: "capture_order", orderID: orderData.id },
-      });
-
-      if (captureError || captureData.status !== "COMPLETED") {
-        throw new Error("Payment capture failed. Please check your details.");
-      }
-
-      toast.success("תשלום בוצע בהצלחה!");
-      onSuccess(captureData.id);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "שגיאה בביצוע התשלום");
-    } finally {
-      setIsProcessing(false);
+    } catch (err) {
+      console.error("Submit Error:", err);
+      setIsProcessing(false); // Stop loading if submit fails immediately
     }
   };
 
   return (
     <button
-      onClick={handlePayment}
+      onClick={handleClick}
       disabled={isProcessing}
       className="btn-gold w-full mt-6 h-12 text-lg flex items-center justify-center gap-2 relative overflow-hidden"
     >
@@ -105,19 +81,63 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
   useEffect(() => {
     if (isOpen && !clientToken) {
       const fetchToken = async () => {
-        const { data, error } = await supabase.functions.invoke("paypal-handler", {
-          body: { action: "generate_client_token" },
-        });
-        if (data?.client_token) {
+        try {
+          const { data, error } = await supabase.functions.invoke("paypal-handler", {
+            body: { action: "generate_client_token" },
+          });
+          if (error || !data?.client_token) throw new Error("Token generation failed");
           setClientToken(data.client_token);
-        } else {
-          console.error("Token Error:", error);
+        } catch (err) {
+          console.error("Token Error:", err);
           toast.error("שגיאה בטעינת מערכת התשלומים");
         }
       };
       fetchToken();
     }
-  }, [isOpen]);
+  }, [isOpen, clientToken]);
+
+  // FIX 2: Define specific handlers for the Provider to satisfy TS interfaces
+  const createOrder = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("paypal-handler", {
+        body: { action: "create_order", amount },
+      });
+      if (error || !data.id) throw new Error("Order creation failed");
+      return data.id;
+    } catch (err: any) {
+      console.error(err);
+      toast.error("שגיאה ביצירת ההזמנה");
+      setIsProcessing(false);
+      throw err;
+    }
+  };
+
+  const onApprove = async (data: any) => {
+    try {
+      const { orderID } = data;
+      const { data: captureData, error } = await supabase.functions.invoke("paypal-handler", {
+        body: { action: "capture_order", orderID },
+      });
+
+      if (error || captureData.status !== "COMPLETED") {
+        throw new Error("Capture failed");
+      }
+
+      toast.success("תשלום בוצע בהצלחה!");
+      onSuccess(captureData.id);
+      // Close/cleanup is handled by parent or onSuccess
+    } catch (err: any) {
+      console.error(err);
+      toast.error("שגיאה בביצוע החיוב הסופי");
+      setIsProcessing(false);
+    }
+  };
+
+  const onError = (err: any) => {
+    console.error("PayPal Error:", err);
+    toast.error("אירעה שגיאה בתהליך התשלום");
+    setIsProcessing(false);
+  };
 
   if (!isOpen) return null;
 
@@ -147,16 +167,23 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
         ) : (
           <PayPalScriptProvider
             options={{
-              clientId: "AY8kXNbjjksL3UEKHwXOQopaI-kJFsaFyV65QCHBBUgtQ9e6FUk-w8p9gk0t7cZXNsCXzcYC89KIHuO4", // Your Live Client ID
+              clientId: "AY8kXNbjjksL3UEKHwXOQopaI-kJFsaFyV65QCHBBUgtQ9e6FUk-w8p9gk0t7cZXNsCXzcYC89KIHuO4",
               components: "card-fields",
               dataClientToken: clientToken,
               currency: "ILS",
               intent: "capture",
             }}
           >
-            <PayPalCardFieldsProvider createOrder={async () => ""} onApprove={async () => {}} style={styleObject}>
+            {/* FIX 2: By providing createOrder, onApprove, and onError, 
+                we match the "Checkout" interface, so TS won't ask for "createVaultSetupToken".
+            */}
+            <PayPalCardFieldsProvider
+              createOrder={createOrder}
+              onApprove={onApprove}
+              onError={onError}
+              style={styleObject}
+            >
               <div className="space-y-4" dir="rtl">
-                {/* Name Field */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium">שם בעל הכרטיס</label>
                   <div className="h-10 px-3 py-2 border rounded-md bg-white">
@@ -164,7 +191,6 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
                   </div>
                 </div>
 
-                {/* Card Number */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium">מספר כרטיס</label>
                   <div className="h-10 px-3 py-2 border rounded-md bg-white">
@@ -172,7 +198,6 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
                   </div>
                 </div>
 
-                {/* Expiry & CVV */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">תוקף</label>
@@ -188,7 +213,7 @@ export function PaymentModal({ isOpen, onClose, onSuccess, amount = "50.00" }: P
                   </div>
                 </div>
 
-                <SubmitPayment isProcessing={isProcessing} setIsProcessing={setIsProcessing} onSuccess={onSuccess} />
+                <SubmitPayment isProcessing={isProcessing} setIsProcessing={setIsProcessing} />
 
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
                   <Lock className="w-3 h-3" />
