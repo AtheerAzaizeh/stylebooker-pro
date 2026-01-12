@@ -117,9 +117,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const action = url.searchParams.get("action");
     const body = await req.json();
+    const action = body.action;
 
     console.log("PayPal handler action:", action);
 
