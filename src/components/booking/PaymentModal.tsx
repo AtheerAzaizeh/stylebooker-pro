@@ -25,16 +25,14 @@ export function PaymentModal({
 }: PaymentModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
-  const [cardFieldsReady, setCardFieldsReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [loadAttempts, setLoadAttempts] = useState(0);
-  const cardFieldsRef = useRef<any>(null);
-  const cardContainerRef = useRef<HTMLDivElement>(null);
+  const paypalContainerRef = useRef<HTMLDivElement>(null);
   const buttonsRendered = useRef(false);
 
   const amount = BARBERSHOP_CONFIG.basePrice;
 
-  // Load PayPal SDK with card fields support
+  // Load PayPal SDK
   useEffect(() => {
     if (!isOpen) return;
 
@@ -51,15 +49,13 @@ export function PaymentModal({
       }
 
       setSdkReady(false);
-      setCardFieldsReady(false);
       setLoadError(false);
       buttonsRendered.current = false;
 
       const script = document.createElement("script");
-      // Load PayPal SDK with card-fields component for direct card entry
-      script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CONFIG.clientId}&currency=${PAYPAL_CONFIG.currency}&components=buttons,card-fields&intent=capture`;
+      // Load PayPal SDK with buttons - enable card funding for direct card payments in popup
+      script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CONFIG.clientId}&currency=${PAYPAL_CONFIG.currency}&intent=capture`;
       script.async = true;
-      script.setAttribute("data-partner-attribution-id", "");
 
       script.onload = () => {
         console.log("PayPal SDK loaded successfully");
@@ -79,28 +75,103 @@ export function PaymentModal({
 
     return () => {
       buttonsRendered.current = false;
-      cardFieldsRef.current = null;
     };
   }, [isOpen, loadAttempts]);
 
-  // Initialize PayPal Card Fields when SDK is ready
+  // Render PayPal buttons when SDK is ready
   useEffect(() => {
-    if (!sdkReady || !window.paypal || !cardContainerRef.current || buttonsRendered.current) {
+    if (!sdkReady || !window.paypal || !paypalContainerRef.current || buttonsRendered.current) {
       return;
     }
 
+    // Clear container
+    paypalContainerRef.current.innerHTML = "";
     buttonsRendered.current = true;
 
-    const initCardFields = async () => {
-      try {
-        // Check if card-fields is available
-        if (!window.paypal.CardFields) {
-          console.log("Card Fields not available, falling back to buttons");
-          setLoadError(true);
-          return;
-        }
+    try {
+      window.paypal.Buttons({
+        style: {
+          layout: "vertical",
+          color: "gold",
+          shape: "rect",
+          label: "pay",
+          height: 48,
+        },
+        fundingSource: window.paypal.FUNDING.CARD, // Prioritize card payment
+        createOrder: async () => {
+          setIsProcessing(true);
+          try {
+            const { data, error } = await supabase.functions.invoke("paypal-handler", {
+              body: { action: "create", amount, currency: "ILS" },
+            });
 
-        const cardFields = window.paypal.CardFields({
+            if (error) {
+              throw new Error(error.message || "Failed to create order");
+            }
+            
+            if (!data?.success) {
+              throw new Error(data?.error || "Failed to create order");
+            }
+
+            console.log("Order created:", data.orderId);
+            return data.orderId;
+          } catch (error) {
+            console.error("Error creating order:", error);
+            toast.error("שגיאה ביצירת ההזמנה");
+            setIsProcessing(false);
+            throw error;
+          }
+        },
+        onApprove: async (paypalData: any) => {
+          try {
+            console.log("Payment approved, capturing...", paypalData);
+            const { data, error } = await supabase.functions.invoke("paypal-handler", {
+              body: { action: "capture", orderId: paypalData.orderID },
+            });
+
+            if (error) {
+              throw new Error(error.message || "Payment capture failed");
+            }
+            
+            if (data?.success) {
+              toast.success("התשלום בוצע בהצלחה!");
+              onPaymentSuccess(data.transactionId || paypalData.orderID);
+            } else {
+              throw new Error(data?.error || "Payment capture failed");
+            }
+          } catch (error) {
+            console.error("Error capturing payment:", error);
+            toast.error("שגיאה בביצוע התשלום");
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        onCancel: () => {
+          setIsProcessing(false);
+          toast.info("התשלום בוטל");
+        },
+        onError: (err: any) => {
+          console.error("PayPal error:", err);
+          setIsProcessing(false);
+          toast.error("שגיאה בתהליך התשלום");
+        },
+      }).render(paypalContainerRef.current);
+
+      // Also render PayPal button as secondary option
+      if (paypalContainerRef.current) {
+        const paypalButtonContainer = document.createElement("div");
+        paypalButtonContainer.style.marginTop = "12px";
+        paypalContainerRef.current.appendChild(paypalButtonContainer);
+
+        window.paypal.Buttons({
+          style: {
+            layout: "vertical",
+            color: "blue",
+            shape: "rect",
+            label: "paypal",
+            height: 48,
+          },
+          fundingSource: window.paypal.FUNDING.PAYPAL,
           createOrder: async () => {
             setIsProcessing(true);
             try {
@@ -116,7 +187,6 @@ export function PaymentModal({
                 throw new Error(data?.error || "Failed to create order");
               }
 
-              console.log("Order created:", data.orderId);
               return data.orderId;
             } catch (error) {
               console.error("Error creating order:", error);
@@ -127,7 +197,6 @@ export function PaymentModal({
           },
           onApprove: async (paypalData: any) => {
             try {
-              console.log("Payment approved, capturing...", paypalData);
               const { data, error } = await supabase.functions.invoke("paypal-handler", {
                 body: { action: "capture", orderId: paypalData.orderID },
               });
@@ -149,112 +218,22 @@ export function PaymentModal({
               setIsProcessing(false);
             }
           },
+          onCancel: () => {
+            setIsProcessing(false);
+            toast.info("התשלום בוטל");
+          },
           onError: (err: any) => {
-            console.error("PayPal Card Fields error:", err);
+            console.error("PayPal error:", err);
             setIsProcessing(false);
             toast.error("שגיאה בתהליך התשלום");
           },
-        });
-
-        // Check eligibility for card fields
-        if (cardFields.isEligible()) {
-          // Clear container
-          if (cardContainerRef.current) {
-            cardContainerRef.current.innerHTML = "";
-          }
-
-          // Create container elements for card fields
-          const numberContainer = document.createElement("div");
-          numberContainer.id = "card-number-field";
-          
-          const expiryContainer = document.createElement("div");
-          expiryContainer.id = "card-expiry-field";
-          
-          const cvvContainer = document.createElement("div");
-          cvvContainer.id = "card-cvv-field";
-          
-          const nameContainer = document.createElement("div");
-          nameContainer.id = "card-name-field";
-
-          if (cardContainerRef.current) {
-            cardContainerRef.current.appendChild(numberContainer);
-            cardContainerRef.current.appendChild(expiryContainer);
-            cardContainerRef.current.appendChild(cvvContainer);
-            cardContainerRef.current.appendChild(nameContainer);
-          }
-
-          // Render card fields with styling
-          const fieldStyle = {
-            input: {
-              "font-size": "16px",
-              "font-family": "inherit",
-              "color": "hsl(var(--foreground))",
-              "padding": "12px",
-            },
-            "input::placeholder": {
-              color: "hsl(var(--muted-foreground))",
-            },
-          };
-
-          await cardFields.NumberField({
-            style: fieldStyle,
-            placeholder: "מספר כרטיס",
-          }).render("#card-number-field");
-
-          await cardFields.ExpiryField({
-            style: fieldStyle,
-            placeholder: "MM/YY",
-          }).render("#card-expiry-field");
-
-          await cardFields.CVVField({
-            style: fieldStyle,
-            placeholder: "CVV",
-          }).render("#card-cvv-field");
-
-          await cardFields.NameField({
-            style: fieldStyle,
-            placeholder: "שם בעל הכרטיס",
-          }).render("#card-name-field");
-
-          cardFieldsRef.current = cardFields;
-          setCardFieldsReady(true);
-          console.log("Card fields rendered successfully");
-        } else {
-          console.log("Card fields not eligible");
-          setLoadError(true);
-        }
-      } catch (error) {
-        console.error("Error initializing card fields:", error);
-        setLoadError(true);
+        }).render(paypalButtonContainer);
       }
-    };
-
-    initCardFields();
-  }, [sdkReady, amount, onPaymentSuccess]);
-
-  const handleSubmitPayment = async () => {
-    if (!cardFieldsRef.current || isProcessing) return;
-
-    setIsProcessing(true);
-    try {
-      const result = await cardFieldsRef.current.submit();
-      console.log("Card payment submitted:", result);
-    } catch (error: any) {
-      console.error("Card payment error:", error);
-      setIsProcessing(false);
-      
-      // Parse error message
-      if (error.message?.includes("INVALID_NUMBER")) {
-        toast.error("מספר כרטיס לא תקין");
-      } else if (error.message?.includes("INVALID_CVV")) {
-        toast.error("CVV לא תקין");
-      } else if (error.message?.includes("INVALID_EXPIRY")) {
-        toast.error("תאריך תפוגה לא תקין");
-      } else {
-        toast.error("שגיאה בתשלום, נסה שוב");
-      }
+    } catch (error) {
+      console.error("Error rendering PayPal buttons:", error);
+      setLoadError(true);
     }
-  };
+  }, [sdkReady, amount, onPaymentSuccess]);
 
   const handleRetryLoad = () => {
     setLoadAttempts((prev) => prev + 1);
@@ -276,7 +255,7 @@ export function PaymentModal({
           </button>
           <h3 className="text-lg font-bold flex items-center gap-2">
             <CreditCard className="w-5 h-5" />
-            תשלום בכרטיס אשראי
+            תשלום מאובטח
           </h3>
           <div className="w-9" />
         </div>
@@ -289,8 +268,8 @@ export function PaymentModal({
             <p className="text-4xl font-bold text-primary mt-1">₪{amount}</p>
           </div>
 
-          {/* Card Fields Container */}
-          <div className="min-h-[200px]">
+          {/* PayPal Buttons Container */}
+          <div className="min-h-[150px]">
             {loadError ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <AlertCircle className="w-12 h-12 text-destructive mb-3" />
@@ -308,37 +287,10 @@ export function PaymentModal({
             ) : !sdkReady ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
-                <p className="text-muted-foreground">טוען טופס תשלום...</p>
+                <p className="text-muted-foreground">טוען אפשרויות תשלום...</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Card fields will be rendered here */}
-                <div 
-                  ref={cardContainerRef} 
-                  className="space-y-3 [&>div]:border [&>div]:border-border [&>div]:rounded-lg [&>div]:bg-background [&>div]:min-h-[48px]"
-                />
-                
-                {/* Submit Button */}
-                {cardFieldsReady && (
-                  <button
-                    onClick={handleSubmitPayment}
-                    disabled={isProcessing}
-                    className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        מעבד תשלום...
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-5 h-5" />
-                        שלם ₪{amount}
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              <div ref={paypalContainerRef} />
             )}
           </div>
 
@@ -357,7 +309,7 @@ export function PaymentModal({
           {/* Security Info */}
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <Lock className="w-3 h-3" />
-            <span>התשלום מאובטח ומוצפן. פרטי הכרטיס לא נשמרים באתר.</span>
+            <span>התשלום מאובטח ומוצפן באמצעות PayPal</span>
           </div>
         </div>
 
