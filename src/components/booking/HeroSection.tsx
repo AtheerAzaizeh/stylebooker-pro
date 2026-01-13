@@ -10,7 +10,11 @@ export function HeroSection({
   onBookClick,
   compact = false
 }: HeroSectionProps) {
-  return <section className={`relative ${compact ? "h-[40vh]" : "h-screen"} min-h-[400px] overflow-hidden`}>
+  return (
+    <section 
+      className={`relative ${compact ? "h-[60vh]" : "h-screen"} min-h-[400px] overflow-hidden pt-16`}
+      aria-label="אזור הזמנת תור"
+    >
       {/* Background Video */}
       <div className="absolute inset-0">
         <video
@@ -20,6 +24,7 @@ export function HeroSection({
           muted
           playsInline
           className="w-full h-full object-cover"
+          aria-hidden="true"
         />
         <div className="hero-overlay" />
       </div>
@@ -29,17 +34,23 @@ export function HeroSection({
         <h1 className="text-5xl md:text-7xl font-black tracking-wider mb-2 animate-fade-in font-serif">
           {BARBERSHOP_CONFIG.name}
         </h1>
-        <p style={{
-        animationDelay: "0.1s"
-      }} className="text-xl md:text-2xl text-muted-foreground mb-8 animate-fade-in font-serif">
+        <p 
+          style={{ animationDelay: "0.1s" }} 
+          className="text-xl md:text-2xl text-muted-foreground mb-8 animate-fade-in font-serif"
+        >
           by {BARBERSHOP_CONFIG.owner}
         </p>
 
         {/* Info Bar */}
-        <div className="flex flex-wrap justify-center gap-8 mb-10 animate-fade-in" style={{
-        animationDelay: "0.2s"
-      }}>
-          <a href={`tel:${BARBERSHOP_CONFIG.phone}`} className="cursor-pointer hover:opacity-80 transition-opacity">
+        <div 
+          className="flex flex-wrap justify-center gap-8 mb-10 animate-fade-in" 
+          style={{ animationDelay: "0.2s" }}
+        >
+          <a 
+            href={`tel:${BARBERSHOP_CONFIG.phone}`} 
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+            aria-label={`התקשר אלינו: ${BARBERSHOP_CONFIG.phone}`}
+          >
             <InfoItem icon={<Phone className="w-6 h-6" />} text={BARBERSHOP_CONFIG.phone} />
           </a>
           <InfoItem icon={<Clock className="w-6 h-6" />} text={`${BARBERSHOP_CONFIG.hours} א'-ו'`} />
@@ -48,27 +59,26 @@ export function HeroSection({
             target="_blank"
             rel="noopener noreferrer"
             className="cursor-pointer hover:opacity-80 transition-opacity"
+            aria-label={`מיקום המספרה: ${BARBERSHOP_CONFIG.location}`}
           >
             <InfoItem icon={<MapPin className="w-6 h-6" />} text={BARBERSHOP_CONFIG.location} />
           </a>
         </div>
 
         {/* Book Button */}
-        {!compact && <button onClick={onBookClick} className="btn-gold text-lg animate-fade-in" style={{
-        animationDelay: "0.3s"
-      }}>
+        {!compact && (
+          <button 
+            onClick={onBookClick} 
+            className="btn-gold text-lg animate-fade-in" 
+            style={{ animationDelay: "0.3s" }}
+            aria-label="קביעת תור במספרה"
+          >
             קביעת תור
-          </button>}
-
-        {/* Privacy Policy Link */}
-        <a 
-          href="/privacy-policy" 
-          className="absolute bottom-4 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-        >
-          מדיניות פרטיות
-        </a>
+          </button>
+        )}
       </div>
-    </section>;
+    </section>
+  );
 }
 function InfoItem({
   icon,
