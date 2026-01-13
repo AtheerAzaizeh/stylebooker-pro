@@ -189,7 +189,7 @@ export function BookingForm({ onClose }: BookingFormProps) {
       />
 
       {/* Payment Modal (Replaces old direct success) */}
-      <PaymentModal isOpen={showPayment} onClose={() => setShowPayment(false)} onSuccess={handlePaymentSuccess} />
+      <PaymentModal isOpen={showPayment} onClose={() => setShowPayment(false)} onPaymentSuccess={handlePaymentSuccess} onSkipPayment={() => setShowPayment(false)} />
 
       {/* Success Modal */}
       <SuccessModal
