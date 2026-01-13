@@ -3,13 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BARBERSHOP by Mohammad Eyad | קביעת תור</title>
-    <meta name="description" content="מספרה מקצועית - קביעת תורים אונליין. שעות פעילות: א'-ו' 10:00-17:00" />
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>MEA-BARBER | מספרה מקצועית בדבוריה - קביעת תור אונליין</title>
+    <meta name="title" content="MEA-BARBER | מספרה מקצועית בדבוריה - קביעת תור אונליין" />
+    <meta name="description" content="MEA-BARBER by Mohammad Eyad - מספרה מקצועית בדבוריה. תספורות גברים, עיצוב זקן, סגנון מודרני. קבעו תור עכשיו! שעות פעילות: א'-ו' 10:00-17:00" />
     <meta name="author" content="Mohammad Eyad" />
+    <meta name="keywords" content="מספרה דבוריה, תספורת גברים, ספר בדבוריה, MEA-BARBER, מספרה מקצועית, עיצוב שיער גברים, קביעת תור מספרה" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://meabarber.lovable.app/" />
 
-    <meta property="og:title" content="BARBERSHOP by Mohammad Eyad" />
-    <meta property="og:description" content="מספרה מקצועית - קביעת תורים אונליין" />
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://meabarber.lovable.app/" />
+    <meta property="og:title" content="MEA-BARBER | מספרה מקצועית בדבוריה" />
+    <meta property="og:description" content="מספרה מקצועית בדבוריה. תספורות גברים, עיצוב זקן, סגנון מודרני. קבעו תור עכשיו!" />
+    <meta property="og:image" content="https://meabarber.lovable.app/og-image.jpg" />
+    <meta property="og:locale" content="he_IL" />
+    <meta property="og:site_name" content="MEA-BARBER" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://meabarber.lovable.app/" />
+    <meta property="twitter:title" content="MEA-BARBER | מספרה מקצועית בדבוריה" />
+    <meta property="twitter:description" content="מספרה מקצועית בדבוריה. תספורות גברים, עיצוב זקן. קבעו תור עכשיו!" />
+    <meta property="twitter:image" content="https://meabarber.lovable.app/og-image.jpg" />
+
+    <!-- Geo Tags for Local SEO -->
+    <meta name="geo.region" content="IL-Z" />
+    <meta name="geo.placename" content="Daburiyya" />
+    <meta name="geo.position" content="32.6889;35.3806" />
+    <meta name="ICBM" content="32.6889, 35.3806" />
 
     <!-- DNS prefetch and preconnect for external resources -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
@@ -19,9 +43,153 @@
     
     <!-- Preload critical font for immediate text rendering -->
     <link rel="preload" href="https://fonts.gstatic.com/s/abrilfatface/v23/zOL64pLDlL1D99S8g8PtiKchq-lmjdLh.woff2" as="font" type="font/woff2" crossorigin>
-    <!-- Preload hero images for LCP optimization -->
-    <link rel="preload" href="/src/assets/hero-barbershop-mobile.webp" as="image" type="image/webp" media="(max-width: 768px)">
-    <link rel="preload" href="/src/assets/hero-barbershop.webp" as="image" type="image/webp" media="(min-width: 769px)">
+
+    <!-- LocalBusiness Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BarberShop",
+      "name": "MEA-BARBER",
+      "alternateName": "MEA-BARBER by Mohammad Eyad",
+      "description": "מספרה מקצועית בדבוריה. תספורות גברים, עיצוב זקן, סגנון מודרני.",
+      "url": "https://meabarber.lovable.app/",
+      "telephone": "+972540000000",
+      "email": "",
+      "priceRange": "₪₪",
+      "currenciesAccepted": "ILS",
+      "paymentAccepted": "Cash, Credit Card, PayPal",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "אלסעדיה 48",
+        "addressLocality": "דבוריה",
+        "addressRegion": "צפון",
+        "addressCountry": "IL"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 32.6889,
+        "longitude": 35.3806
+      },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Sunday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+          "opens": "10:00",
+          "closes": "17:00"
+        }
+      ],
+      "founder": {
+        "@type": "Person",
+        "name": "Mohammad Eyad"
+      },
+      "foundingDate": "2024",
+      "areaServed": {
+        "@type": "Place",
+        "name": "דבוריה והסביבה"
+      },
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "שירותי ספרות",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "תספורת גברים",
+              "description": "תספורת מקצועית לגברים",
+              "provider": {
+                "@type": "BarberShop",
+                "name": "MEA-BARBER"
+              }
+            },
+            "price": "50",
+            "priceCurrency": "ILS"
+          }
+        ]
+      },
+      "sameAs": []
+    }
+    </script>
+
+    <!-- FAQ Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "מהן שעות הפעילות של המספרה?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "המספרה פתוחה מיום ראשון עד יום שישי, בין השעות 10:00-17:00. יום שני המספרה סגורה."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "האם צריך לקבוע תור מראש?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "כן, אנו ממליצים בחום לקבוע תור מראש דרך האתר. זה מבטיח שתקבלו את השירות הטוב ביותר ללא המתנה."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "מה המחיר לתספורת?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "מחיר התספורת הוא 50 ש\"ח. המחיר כולל שירות מקצועי, ייעוץ סגנון ושטיפה."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "כמה זמן לוקחת תספורת?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "תספורת אורכת בממוצע 40 דקות. אנחנו מקדישים זמן איכותי לכל לקוח כדי להבטיח תוצאה מושלמת."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "האם אפשר לבטל או לשנות תור?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "כן, ניתן לבטל או לשנות תור עד 3 שעות לפני המועד המתוכנן. פשוט צרו איתנו קשר בטלפון."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "איפה המספרה ממוקמת?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "המספרה ממוקמת בכתובת אלסעדיה 48, דבוריה. יש חניה זמינה בקרבת מקום."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Website Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "MEA-BARBER",
+      "url": "https://meabarber.lovable.app/",
+      "potentialAction": {
+        "@type": "ReserveAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://meabarber.lovable.app/"
+        },
+        "result": {
+          "@type": "Reservation",
+          "name": "קביעת תור תספורת"
+        }
+      }
+    }
+    </script>
+
     <style>
       /* Critical CSS - inlined to avoid render blocking */
       @font-face {
@@ -34,7 +202,7 @@
       }
       /* Critical above-the-fold styles for instant first paint */
       *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}
-      html{direction:rtl;line-height:1.5;-webkit-text-size-adjust:100%;font-family:'Abril Fatface',Georgia,'Times New Roman',serif}
+      html{direction:rtl;line-height:1.5;-webkit-text-size-adjust:100%;font-family:'Abril Fatface',Georgia,'Times New Roman',serif;scroll-behavior:smooth}
       body{margin:0;line-height:inherit;background-color:hsl(0 0% 4%);color:hsl(45 10% 95%);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
       #root{min-height:100vh}
       .min-h-screen{min-height:100vh}
