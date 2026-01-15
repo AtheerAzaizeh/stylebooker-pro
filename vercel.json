@@ -15,6 +15,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!sw\\.js|manifest\\.webmanifest|workbox-.*\\.js|registerSW\\.js|pwa-.*\\.png|apple-touch-icon\\.png).*)", "destination": "/index.html" }
+    { "source": "/((?!sw\\.js|manifest\\.webmanifest|workbox-.*\\.js|registerSW\\.js|pwa-.*\\.png|apple-touch-icon\\.png|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
   ]
 }
