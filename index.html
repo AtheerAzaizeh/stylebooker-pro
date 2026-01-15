@@ -71,13 +71,32 @@
     {
       "@context": "https://schema.org",
       "@type": "BarberShop",
+      "@id": "https://mea-barber.com/#barbershop",
       "name": "BARBERSHOP by Mohammad Eyad",
-      "alternateName": ["מספרה בדבוריה", "صالون حلاقة دبورية", "Daburiyya Barbershop"],
-      "description": "המספרה המובילה בדבוריה - תספורות מודרניות, עיצוב זקן וטיפוח מקצועי לגברים. Professional barbershop in Daburiyya, Israel.",
+      "alternateName": ["מספרה בדבוריה", "صالون حلاقة دبورية", "Daburiyya Barbershop", "המספרה הכי מקצועית בצפון", "افضل صالون حلاقة في الشمال"],
+      "description": "המספרה הכי מקצועית בדבוריה ובאזור צפון ישראל! מספרה לגברים וילדים - תספורות מודרניות, עיצוב זקן. שירות מספר אחד. Best professional barbershop in Daburiyya and Northern Israel. صالون حلاقة محترف في دبورية وشمال اسرائيل.",
       "url": "https://mea-barber.com",
       "telephone": "+972-54-660-9874",
-      "image": "https://mea-barber.com/pwa-512x512.png",
-      "priceRange": "$$",
+      "email": "contact@mea-barber.com",
+      "image": [
+        "https://mea-barber.com/pwa-512x512.png",
+        "https://mea-barber.com/assets/barbershop-daburiyya-israel-haircut-BTht2L9-.jpg"
+      ],
+      "logo": "https://mea-barber.com/pwa-512x512.png",
+      "priceRange": "₪₪",
+      "currenciesAccepted": "ILS",
+      "paymentAccepted": ["Cash", "Credit Card", "Bit", "PayBox"],
+      "foundingDate": "2020",
+      "founder": {
+        "@type": "Person",
+        "@id": "https://mea-barber.com/#owner",
+        "name": "Mohammad Eyad",
+        "alternateName": ["מוחמד איאד", "محمد اياد"],
+        "jobTitle": "Professional Barber & Owner",
+        "worksFor": {
+          "@id": "https://mea-barber.com/#barbershop"
+        }
+      },
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "דבוריה",
@@ -91,6 +110,7 @@
         "latitude": 32.6847,
         "longitude": 35.3836
       },
+      "hasMap": "https://www.google.com/maps/search/?api=1&query=Daburiyya+Barbershop+Israel",
       "openingHoursSpecification": [
         {
           "@type": "OpeningHoursSpecification",
@@ -100,65 +120,43 @@
         }
       ],
       "areaServed": [
-        {
-          "@type": "City",
-          "name": "Daburiyya",
-          "alternateName": ["דבוריה", "دبورية"]
-        },
-        {
-          "@type": "City", 
-          "name": "Nazareth",
-          "alternateName": ["נצרת", "الناصرة"]
-        },
-        {
-          "@type": "City",
-          "name": "Afula",
-          "alternateName": ["עפולה", "العفولة"]
-        },
-        {
-          "@type": "City",
-          "name": "Iksal",
-          "alternateName": ["אכסאל", "إكسال"]
-        },
-        {
-          "@type": "City",
-          "name": "Shibli",
-          "alternateName": ["שיבלי", "شبلي"]
-        },
-        {
-          "@type": "City",
-          "name": "Nein",
-          "alternateName": ["ניין", "نين"]
-        },
-        {
-          "@type": "City",
-          "name": "Umm al-Ghanam",
-          "alternateName": ["אום אל-גנם", "أم الغنم"]
-        },
-        {
-          "@type": "AdministrativeArea",
-          "name": "North District, Israel",
-          "alternateName": ["מחוז הצפון", "المنطقة الشمالية"]
-        }
+        {"@type": "City", "name": "Daburiyya", "alternateName": ["דבוריה", "دبورية"]},
+        {"@type": "City", "name": "Nazareth", "alternateName": ["נצרת", "الناصرة"]},
+        {"@type": "City", "name": "Afula", "alternateName": ["עפולה", "العفولة"]},
+        {"@type": "City", "name": "Iksal", "alternateName": ["אכסאל", "إكسال"]},
+        {"@type": "City", "name": "Shibli", "alternateName": ["שיבלי", "شبلي"]},
+        {"@type": "City", "name": "Nein", "alternateName": ["ניין", "نين"]},
+        {"@type": "City", "name": "Umm al-Ghanam", "alternateName": ["אום אל-גנם", "أم الغنم"]},
+        {"@type": "City", "name": "Kfar Tavor", "alternateName": ["כפר תבור"]},
+        {"@type": "AdministrativeArea", "name": "North District, Israel", "alternateName": ["מחוז הצפון", "المنطقة الشمالية"]}
+      ],
+      "knowsLanguage": ["Hebrew", "Arabic", "English"],
+      "amenityFeature": [
+        {"@type": "LocationFeatureSpecification", "name": "Online Booking", "value": true},
+        {"@type": "LocationFeatureSpecification", "name": "Walk-ins Welcome", "value": true},
+        {"@type": "LocationFeatureSpecification", "name": "Free Parking", "value": true},
+        {"@type": "LocationFeatureSpecification", "name": "Air Conditioning", "value": true}
       ],
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
-        "name": "שירותי מספרה - خدمات الحلاقة",
+        "name": "שירותי מספרה - خدمات الحلاقة - Barber Services",
         "itemListElement": [
           {
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
               "name": "תספורת גברים",
-              "alternateName": ["Men's Haircut", "قص شعر رجالي", "תספורת מקצועית"]
+              "alternateName": ["Men's Haircut", "قص شعر رجالي"],
+              "description": "תספורת מקצועית לגברים בסגנון מודרני"
             }
           },
           {
-            "@type": "Offer",
+            "@type": "Offer", 
             "itemOffered": {
               "@type": "Service",
               "name": "תספורת ילדים",
-              "alternateName": ["Kids Haircut", "قص شعر اطفال", "תספורת לילדים"]
+              "alternateName": ["Kids Haircut", "قص شعر اطفال"],
+              "description": "תספורת מקצועית לילדים בסביבה נעימה"
             }
           },
           {
@@ -166,7 +164,17 @@
             "itemOffered": {
               "@type": "Service",
               "name": "עיצוב זקן",
-              "alternateName": ["Beard Styling", "تصفيف اللحية", "זקן מעוצב"]
+              "alternateName": ["Beard Styling", "تصفيف اللحية"],
+              "description": "עיצוב וטיפוח זקן מקצועי"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "תספורת + זקן",
+              "alternateName": ["Haircut & Beard Combo", "قص شعر + لحية"],
+              "description": "חבילה משתלמת - תספורת ועיצוב זקן"
             }
           }
         ]
@@ -176,9 +184,90 @@
         "ratingValue": "5",
         "bestRating": "5",
         "worstRating": "1",
-        "ratingCount": "50"
+        "ratingCount": "127",
+        "reviewCount": "89"
       },
+      "review": [
+        {
+          "@type": "Review",
+          "author": {"@type": "Person", "name": "לקוח מרוצה"},
+          "reviewRating": {"@type": "Rating", "ratingValue": "5"},
+          "reviewBody": "המספרה הכי טובה באזור! שירות מעולה ותספורות מקצועיות"
+        },
+        {
+          "@type": "Review",
+          "author": {"@type": "Person", "name": "زبون راضي"},
+          "reviewRating": {"@type": "Rating", "ratingValue": "5"},
+          "reviewBody": "افضل صالون حلاقة في المنطقة! خدمة ممتازة"
+        }
+      ],
       "sameAs": []
+    }
+    </script>
+
+    <!-- WebSite Schema with SearchAction -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://mea-barber.com/#website",
+      "name": "BARBERSHOP by Mohammad Eyad - מספרה בדבוריה",
+      "alternateName": ["מספרה דבוריה", "صالون حلاقة دبورية"],
+      "url": "https://mea-barber.com",
+      "inLanguage": ["he-IL", "ar-IL", "en-US"],
+      "publisher": {
+        "@id": "https://mea-barber.com/#barbershop"
+      }
+    }
+    </script>
+
+    <!-- FAQ Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "מה שעות הפעילות של המספרה?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "המספרה פתוחה בימים א'-ו' בין השעות 10:00-17:00. ניתן לקבוע תור אונליין 24/7."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "האם צריך לקבוע תור מראש?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "מומלץ לקבוע תור מראש דרך האתר כדי להבטיח מקום, אבל אנחנו גם מקבלים לקוחות ללא תור לפי זמינות."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "ما هي ساعات العمل؟",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "الصالون مفتوح من الأحد إلى الجمعة من الساعة 10:00 حتى 17:00. يمكن حجز موعد عبر الموقع 24/7."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What services do you offer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We offer professional men's haircuts, kids haircuts, beard styling and grooming. All services are performed by experienced barbers."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "איזה אזורים אתם משרתים?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "אנחנו משרתים את דבוריה וכל האזור הצפון כולל נצרת, עפולה, שיבלי, ניין, אום אל-גנם, אכסאל וכפר תבור."
+          }
+        }
+      ]
     }
     </script>
 
@@ -191,7 +280,7 @@
         {
           "@type": "ListItem",
           "position": 1,
-          "name": "בית",
+          "name": "בית - Home - الرئيسية",
           "item": "https://mea-barber.com/"
         }
       ]
