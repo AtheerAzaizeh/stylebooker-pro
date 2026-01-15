@@ -25,7 +25,7 @@ import {
 
 interface SendSmsRequest {
   phone: string;
-  type: "verification" | "booking_confirmation" | "booking_cancelled" | "booking_updated";
+  type: "verification" | "booking_confirmation" | "booking_cancelled" | "booking_updated" | "booking_reminder";
   data?: {
     code?: string;
     date?: string;
@@ -151,6 +151,12 @@ const handler = async (req: Request): Promise<Response> => {
       case "booking_updated": {
         const formattedDate = data?.date ? formatDateHebrew(data.date) : data?.date;
         message = `התור שלך עודכן!\nתאריך: ${formattedDate}\nשעה: ${data?.time}\nBARBERSHOP by Mohammad Eyad`;
+        break;
+      }
+        
+      case "booking_reminder": {
+        const formattedDate = data?.date ? formatDateHebrew(data.date) : data?.date;
+        message = `תזכורת! מחר יש לך תור 💈\nשם: ${data?.name}\nתאריך: ${formattedDate}\nשעה: ${data?.time}\n\nנתראה!\nBARBERSHOP by Mohammad Eyad`;
         break;
       }
         

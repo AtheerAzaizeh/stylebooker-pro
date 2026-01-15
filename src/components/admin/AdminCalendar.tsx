@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, Edit2, X, Lock, Unlock, LogOut } from "lucide-react";
+import { CalendarSkeleton } from "@/components/ui/Skeleton";
 import {
   getAvailableDates,
   generateTimeSlots,
@@ -103,11 +104,7 @@ export function AdminCalendar({ onLogout }: AdminCalendarProps) {
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">טוען...</div>
-      </div>
-    );
+    return <CalendarSkeleton />;
   }
 
   return (
