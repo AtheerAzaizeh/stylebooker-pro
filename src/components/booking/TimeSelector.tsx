@@ -59,13 +59,21 @@ export function TimeSelector({
               key={time}
               onClick={() => !isDisabled && onSelectTime(time)}
               disabled={isDisabled}
+              aria-disabled={isDisabled}
               className={cn(
                 "time-slot min-w-[70px] transition-all duration-200",
                 isSelected && "time-slot-selected",
                 isDisabled && "time-slot-disabled"
               )}
             >
-              {time}
+              {isBooked ? (
+                <span className="flex flex-col items-center">
+                  <span className="line-through text-xs">{time}</span>
+                  <span className="text-[10px]">תפוס</span>
+                </span>
+              ) : (
+                time
+              )}
             </button>
           );
         })}
