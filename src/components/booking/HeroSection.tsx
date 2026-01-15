@@ -10,9 +10,16 @@ export function HeroSection({
   compact = false
 }: HeroSectionProps) {
   return <section className={`relative ${compact ? "h-[40vh]" : "h-screen"} min-h-[400px] overflow-hidden`}>
-      {/* Background Image */}
+      {/* Background Image - LCP Element */}
       <div className="absolute inset-0">
-        <img src={heroImage} alt="Barbershop" className="w-full h-full object-cover" />
+        <img 
+          src={heroImage} 
+          alt="Barbershop" 
+          className="w-full h-full object-cover"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+        />
         <div className="hero-overlay" />
       </div>
 
